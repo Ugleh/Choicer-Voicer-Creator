@@ -11,6 +11,7 @@ const {collectionPlan}=require('./collection.cjs');
 const {TimelineThumbnails}=require('./thumbnails.cjs');
 const {shareContent}=require('../shared/sharing.mjs');
 const {pricingSettings,validatePricing,PRICING_SOURCES}=require('../shared/pricing.mjs');
+const {VIDEO_EXTENSIONS,VIDEO_FILE_ERROR,isVideoFile}=require('../shared/video-formats.mjs');
 if(process.env.CV_TEST_DATA)app.setPath('userData',process.env.CV_TEST_DATA);
 protocol.registerSchemesAsPrivileged([{scheme:'cvmedia',privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true,corsEnabled:true}}]);
 let win,engine,provider,thumbnails,data,settings={},jobs=[],busy=false,projectPath=null,dirty=false;
@@ -29,7 +30,7 @@ function cleanProject(project){const result=structuredClone(validateProject(proj
 function validateAccess(project){validateProject(project);if(project.media)requireAllowed(project.media.path);for(const scene of project.scenes){if(scene.backing?.path)requireAllowed(scene.backing.path);if(scene.backing?.vocalsPath)requireAllowed(scene.backing.vocalsPath);}}
 async function useProject(project){validateProject(project);if(project.media){
   if(!await exists(project.media.path)){
-    const picked=await dialog.showOpenDialog(win,{title:'Locate the original video',properties:['openFile'],filters:[{name:'Videos',extensions:['mp4','mkv']}]});
+    const picked=await dialog.showOpenDialog(win,{title:'Locate the original video',properties:['openFile'],filters:[{name:'Videos',extensions:VIDEO_EXTENSIONS}]});
     if(picked.canceled)throw new Error('Source video not found. Locate it to reopen this project.');
     project.media.path=picked.filePaths[0];for(const scene of project.scenes)scene.backing=null;
   }
@@ -75,7 +76,7 @@ app.whenReady().then(async()=>{
   win.on('close',event=>{if(busy){event.preventDefault();dialog.showMessageBoxSync(win,{message:'An operation is running. Cancel it before closing.'});return;}if(dirty){const response=dialog.showMessageBoxSync(win,{type:'question',message:'Close with unsaved edits?',detail:'Your last recovery snapshot will be available next time.',buttons:['Keep editing','Close'],defaultId:0,cancelId:0});if(response===0)event.preventDefault();}});
   handle('bootstrap',async()=>{let toolStatus;try{toolStatus=await engine.check();}catch(e){toolStatus={ok:false,error:e.message};}return {settings:publicSettings(),toolStatus,recovery:await exists(path.join(data,'recovery.json'))};});
   async function inspectVideo(file){
-    if(typeof file!=='string'||!path.isAbsolute(file)||!['.mp4','.mkv'].includes(path.extname(file).toLowerCase()))throw new Error('Choose one MP4 or MKV video file.');
+    if(typeof file!=='string'||!path.isAbsolute(file)||!isVideoFile(file))throw new Error(VIDEO_FILE_ERROR);
     const stat=await fs.stat(file);
     if(!stat.isFile())throw new Error('Drop a video file, not a folder.');
     const info=await engine.probe(file);
@@ -83,7 +84,7 @@ app.whenReady().then(async()=>{
     allow(file);
     return {path:file,...info,raw:undefined};
   }
-  handle('importVideo',async()=>{const result=await dialog.showOpenDialog(win,{title:'Import a movie or video',properties:['openFile'],filters:[{name:'Video',extensions:['mkv','mp4']}]});if(result.canceled)return null;return inspectVideo(result.filePaths[0]);},true);
+  handle('importVideo',async()=>{const result=await dialog.showOpenDialog(win,{title:'Import a movie or video',properties:['openFile'],filters:[{name:'Video',extensions:VIDEO_EXTENSIONS}]});if(result.canceled)return null;return inspectVideo(result.filePaths[0]);},true);
   handle('importDroppedVideo',inspectVideo,true);
   handle('prepareVideo',async(file,audioIndex,newCollection=false)=>{requireAllowed(file);const media=decorateMedia(await engine.prepare(file,audioIndex));if(newCollection){projectPath=null;dirty=false;}return media;},true);
   handle('timelineThumbnails',async(file,start,end,count)=>{requireAllowed(file);const media=preparedMedia.get(path.resolve(file));if(!media)throw new Error('Open this video before requesting timeline pictures.');if(busy)return null;const frames=await thumbnails.request(media,start,end,count);return frames?.map(frame=>({time:frame.time,url:mediaURL(frame.path)}))??null;});

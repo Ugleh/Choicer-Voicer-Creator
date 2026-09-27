@@ -21,6 +21,16 @@ cache/
 *.avi
 *.mov
 *.webm
+*.m4v
+*.wmv
+*.asf
+*.mpg
+*.mpeg
+*.m2ts
+*.flv
+*.3gp
+*.3g2
+*.vob
 *.nut
 *.zip
 *.7z

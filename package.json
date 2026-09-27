@@ -1,6 +1,6 @@
 {
   "name": "choicer-voicer-creator",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "private": true,
   "description": "A local desktop workshop for Choicer Voicer dub packs",
   "author": "Choicer Voicer Creator contributors",
@@ -50,7 +50,7 @@
     "appId": "local.choicervoicer.creator",
     "productName": "Choicer Voicer Creator",
     "directories": {
-      "output": "release/v0.1.15"
+      "output": "release/v0.1.16"
     },
     "files": [
       "dist/**/*",

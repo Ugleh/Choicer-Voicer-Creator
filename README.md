@@ -1,10 +1,10 @@
 # Choicer Voicer Creator
 
-A Windows desktop editor for turning MKV and MP4 movies into collections of Choicer Voicer Dub Packs. An independent fan tool; not affiliated with YeahMaybe. No game files are included.
+A Windows desktop editor for turning videos into collections of Choicer Voicer Dub Packs. An independent fan tool; not affiliated with YeahMaybe. No game files are included.
 
 ![Editing a scene from the Kung Pow collection](docs/screenshots/scene-editor.png)
 
-- Import MP4 or MKV video and edit scenes with a preview, waveform, and timeline pictures.
+- Import common video formats and edit scenes with a preview, waveform, and timeline pictures.
 - Create and time dialogue lines, merge or duplicate them, and rename characters in bulk.
 - Optionally use ElevenLabs for captions and background separation, or edit and export without an API key.
 - Export one scene or combine a collection into a single Dub Pack.
@@ -32,15 +32,17 @@ The screenshots illustrate the editor using an existing local project. The movie
 
 ## Open the app
 
-Double-click **Launch Creator.cmd**, or run `release/v0.1.15/win-unpacked/Choicer Voicer Creator.exe` after packaging. Keep the entire `win-unpacked` folder together. Save and close any older app window before reopening through the launcher to use the latest version. The running version appears in the header and in **Settings & usage**, which also shows the executable path.
+Double-click **Launch Creator.cmd**, or run `release/v0.1.16/win-unpacked/Choicer Voicer Creator.exe` after packaging. Keep the entire `win-unpacked` folder together. Save and close any older app window before reopening through the launcher to use the latest version. The running version appears in the header and in **Settings & usage**, which also shows the executable path.
 
 FFmpeg and FFprobe must be on PATH, or set their executable paths in **Settings & usage** (for example, `C:\ffmpeg\bin\ffmpeg.exe` and `C:\ffmpeg\bin\ffprobe.exe`). The build needs `libtheora`, `libvorbis`, `libx264`, and `ffv1` encoders. FFmpeg is not redistributed with this app. For a source checkout, follow the development instructions below to run or package the application.
+
+Supported inputs: **MP4, MKV, MOV, AVI, WebM, M4V, WMV, ASF, MPG, MPEG, TS, MTS, M2TS, FLV, OGV, 3GP, 3G2, and VOB**. The picker, drag-and-drop, and missing-source locator accept the same formats. Files must contain both video and audio, and their codecs must be supported by your FFmpeg installation. The existing preview and export pipeline handles them without extra tools or cloud processing.
 
 Version 0.1.1 automatically removes invisible text-direction markers and wrapping quotes from copied executable paths, including existing saved settings.
 
 ## Make a collection
 
-1. Drop one MP4 or MKV anywhere in the app, or use **Choose a video**. A local H.264 preview, waveform, and filmstrip are generated. First import converts the full movie and can take several minutes and additional disk space, especially for HEVC sources. The progress panel shows each step, percentage, elapsed time, and processed movie time; conversion speed and estimated remaining time appear when available. Estimates are for the current step and may vary. Cancel is available; finished previews are reused, including those created by older versions. Dropping another video asks before replacing a collection that has scenes; wait for active processing to finish before dropping another file.
+1. Drop one video file anywhere in the app, or use **Choose a video**. A local H.264 preview, waveform, and filmstrip are generated. First import converts the full movie and can take several minutes and additional disk space, especially for HEVC sources. The progress panel shows each step, percentage, elapsed time, and processed movie time; conversion speed and estimated remaining time appear when available. Estimates are for the current step and may vary. Cancel is available; finished previews are reused, including those created by older versions. Dropping another video asks before replacing a collection that has scenes; wait for active processing to finish before dropping another file.
 2. Choose an audio language track before creating scenes. Enter **Pack title** and **Pack author** on the Source screen. Pack title controls the exported title and folder name independently of the source filename; individual scene packs add the scene name. Leave it blank to use the collection name. Titles are saved in the project.
 3. Select a source range by dragging on the timeline or by setting **IN / OUT**. Click the padlock next to **IN** to hold the start while adjusting **OUT**, or lock **OUT** to hold the end. With both locked, seeking leaves the range unchanged. Drag an IN/OUT handle or use the adjacent frame buttons for fine adjustments. Numeric times apply on Enter or when leaving the field; Escape cancels typing. Create a scene; repeat for other scenes in the movie. Source timings are seconds from the movie. Line timings are seconds from the start of a scene. Locks apply to the current selection and reset when opening a collection, switching editing contexts, or creating a scene/line; they are not saved in the project.
 4. Inside a scene, click **Add dialogue line**, mark its **START / END**, then **Create dialogue line**. Times are relative to the scene in **MM:SS.mmm**, matching the preview clock and timeline ruler. Fields also accept seconds: `01:34.699` and `94.699` mean the same time. **Cancel new line** returns to browsing. Edit an existing line's caption, character, and timing in Edit Dialogue, or select it and drag its clip edges. Selected clips appear above overlapping clips; only selected clips expose resize handles. Zoom and scroll the waveform to inspect detail. Alternatively, use ElevenLabs to suggest timed lines, review them, and apply. **Ctrl-click** dialogue rows to select/toggle several lines. Edit Dialogue then lets you **Apply character** to the selection or **Merge lines**. Merging joins captions in chronological order, keeps the earliest start and latest end, and preserves pauses. Assign one common character first if the selection has different characters. Both operations support Undo/Redo. Merges over six seconds are allowed with a recommendation; 60 seconds or longer is blocked.

@@ -2,11 +2,17 @@ const { _electron: electron } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const {MediaEngine}=require('../electron/media.cjs');
 
 (async () => {
   const fixture = JSON.parse(await fs.readFile('.test-data/fixture-path.json', 'utf8'));
   const data = path.resolve('.test-data', 'drop-' + Date.now());
   await fs.mkdir(data, { recursive: true });
+  const engine=new MediaEngine(path.join(data,'fixture-cache'),()=>({})),samples={};
+  for(const [extension,codecs] of [['MOV',['-c','copy']],['avi',['-c:v','mpeg4','-q:v','5','-c:a','pcm_s16le']],['webm',['-c:v','libvpx-vp9','-deadline','realtime','-cpu-used','8','-c:a','libopus']]]){
+    samples[extension]=path.join(data,'sample.'+extension);
+    await engine.ff(['-i',fixture.source,'-t','2','-map','0:v:0','-map','0:a:0',...codecs,samples[extension]]);
+  }
   const launch = process.env.CV_PACKAGED_EXE
     ? { executablePath: path.resolve(process.env.CV_PACKAGED_EXE), args: [] }
     : { args: [path.resolve('.')] };
@@ -53,7 +59,7 @@ const path = require('node:path');
     await page.getByText('Drop your video here', { exact: true }).waitFor({ state: 'hidden' });
 
     await drop([fixture.backing]);
-    await assertNotice('Choose one MP4 or MKV video file.');
+    await assertNotice('Choose one supported video file');
     await drop([fixture.mkv, fixture.source]);
     await assertNotice('Drop one video at a time.');
     await page.evaluate(() => {
@@ -95,8 +101,22 @@ const path = require('node:path');
     await page.getByRole('button', { name: 'Saved', exact: true }).waitFor();
     assert.equal(JSON.parse(await fs.readFile(oldProject, 'utf8')).scenes.length, 1);
     assert.equal(JSON.parse(await fs.readFile(newProject, 'utf8')).media.path, fixture.source);
+
+    // Uppercase MOV through the native picker, WebM through a disk-backed drop,
+    // and AVI through the missing-source locator exercise different import paths.
+    await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async(_win,options)=>{global.__videoFilters=options.filters;return {canceled:false,filePaths:[file]};};},samples.MOV);
+    await page.getByRole('button',{name:'Replace video',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('.source-item small')?.textContent==='sample.MOV');
+    await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
+    const importFilters=await app.evaluate(()=>global.__videoFilters[0].extensions);assert.ok(['mov','avi','webm','wmv','m2ts'].every(ext=>importFilters.includes(ext)));
+    await drop([samples.webm]);await page.waitForFunction(()=>document.querySelector('.source-item small')?.textContent==='sample.webm');await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
+    const missingProject=path.join(data,'missing-source.cvcreator');await fs.writeFile(missingProject,JSON.stringify({version:1,name:'Relocated video',media:{path:path.join(data,'missing.avi'),duration:2,audioIndex:1},scenes:[]}));
+    await app.evaluate(({dialog},{project,video})=>{dialog.showMessageBox=async()=>({response:1});dialog.showOpenDialog=async(_win,options)=>{if(options.title==='Locate the original video')global.__relocateFilters=options.filters;return {canceled:false,filePaths:[options.title==='Locate the original video'?video:project]};};},{project:missingProject,video:samples.avi});
+    await page.getByRole('button',{name:'Open',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.source-item small')?.textContent==='sample.avi');await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
+    assert.deepEqual(await app.evaluate(()=>global.__relocateFilters[0].extensions),importFilters);
+    const audioOnly=path.join(data,'audio-only.mov');await fs.copyFile(fixture.backing,audioOnly);await drop([audioOnly]);await assertNotice('Choose a video containing both a video track and an audio track.');assert.equal(await page.locator('.source-item small').textContent(),'sample.avi');
     assert.deepEqual(errors, []);
-    console.log('Video drop passed: disk-backed MKV/MP4, overlay, invalid/multiple/virtual files, busy guard, replacement/cancel, and separate project saves.');
+    console.log('Video import passed: MKV/MP4 drop regression, native uppercase MOV, VP9/Opus WebM drop, AVI source relocation, playable previews, audio-only rejection, matched filters, and preserved project saves.');
   } finally {
     await app.evaluate(({ app }) => app.exit(0));
     await app.close().catch(() => {});
