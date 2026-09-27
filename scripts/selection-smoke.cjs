@@ -16,7 +16,7 @@ const path = require('node:path');
     page.on('pageerror', e => errors.push(e.message));
     await page.getByText('FFmpeg ready', { exact: false }).waitFor();
     await app.evaluate(({ dialog }, file) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] }); }, fixture.mkv);
-    await page.getByRole('button', { name: 'Choose a video' }).click();
+    await page.getByRole('button', { name: 'Open Video…' }).click();
     await page.getByRole('button', { name: 'Create scene', exact: true }).waitFor();
     await page.waitForFunction(() => document.querySelector('video')?.readyState >= 2);
     let inputLabel = 'Selection in seconds', outputLabel = 'Selection out seconds';

@@ -9,4 +9,6 @@ api.importDroppedVideo=async file=>{
   return result.value;
 };
 api.onProgress=callback=>{const listener=(_event,data)=>callback(data);ipcRenderer.on('cv:progress',listener);return()=>ipcRenderer.removeListener('cv:progress',listener);};
+for(const channel of ['newProject','editText','windowAction'])api[channel]=async(...args)=>{const result=await ipcRenderer.invoke('cv:'+channel,...args);if(!result.ok)throw new Error(result.error);return result.value;};
+api.onMenu=callback=>{const listener=(_event,action)=>callback(action);ipcRenderer.on('cv:menu',listener);return()=>ipcRenderer.removeListener('cv:menu',listener);};
 contextBridge.exposeInMainWorld('creator',api);

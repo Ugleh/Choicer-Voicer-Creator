@@ -14,6 +14,7 @@ export function EffectsTrack({scene,start,span,current,selectedId,onSelect,onUpd
   const drag=useRef(null),duration=scene.end-scene.start;
   function begin(event,effect,edge) {
     event.stopPropagation();if(event.button!==0)return;event.preventDefault();
+    event.currentTarget.closest('.timeline').focus({preventScroll:true});
     const width=event.currentTarget.closest('.timeline').getBoundingClientRect().width;
     onSelect(effect.id,true);drag.current={effect,edge,x:event.clientX,width,playhead:current-scene.start};event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -41,7 +42,7 @@ export function EffectsTrack({scene,start,span,current,selectedId,onSelect,onUpd
   </div>;
 }
 
-export function EffectsPlayback({scene,videoRef,playing,enabled,onError}) {
+export function EffectsPlayback({scene,videoRef,playing,enabled,volume=1,onError}) {
   const nodes=useRef(new Map()),sceneRef=useRef(scene);sceneRef.current=scene;
   useEffect(()=>{
     let frame;
@@ -53,14 +54,14 @@ export function EffectsPlayback({scene,videoRef,playing,enabled,onError}) {
         if(!active){audio.pause();continue;}
         const local=time-effect.start,target=effect.offset+local;
         let gain=effect.gain;if(effect.fadeIn)gain*=Math.min(1,local/effect.fadeIn);if(effect.fadeOut)gain*=Math.min(1,(effect.end-time)/effect.fadeOut);
-        audio.volume=clamp(gain,0,1);
+        audio.volume=clamp(gain*volume,0,1);
         if(audio.paused||Math.abs(audio.currentTime-target)>.06)audio.currentTime=target;
         if(audio.paused)audio.play().catch(()=>{});
       }
       if(playing&&enabled)frame=requestAnimationFrame(sync);
     };
     sync();return()=>{cancelAnimationFrame(frame);for(const audio of nodes.current.values())audio.pause();};
-  },[scene?.id,videoRef,playing,enabled]);
+  },[scene?.id,videoRef,playing,enabled,volume]);
   return <>{(scene?.effects||[]).filter(e=>e.url&&!e.missing).map(effect=><audio key={effect.id} data-sound-effect={effect.id} ref={node=>{if(node)nodes.current.set(effect.id,node);else nodes.current.delete(effect.id);}} src={effect.url} preload="auto" onError={()=>onError(`Could not load sound effect: ${effect.name}. Reimport or remove it.`)}/>)}</>;
 }
 
@@ -73,7 +74,7 @@ export default function SoundEffects({scene,selectedId,onSelect,onUpdate,onImpor
   const menuEffect=effects.find(e=>e.id===effectMenu?.id);
   return <section className={`sound-effects-panel ${!effects.length||collapsed?'compact-effects':''}`} aria-label="Sound Effects">
     <div className="section-toolbar"><div className="row"><Volume2 size={17}/><strong>Sound Effects</strong><span className="count">{effects.length}</span>{effects.length>0&&<button className="text-button" aria-expanded={!collapsed} onClick={()=>setCollapsed(value=>!value)}>{collapsed?'Expand sound effects':'Collapse sound effects'}</button>}</div><div className="row"><button className="button" disabled={busy||effects.length>=200} onClick={onImport}><Upload size={15}/> Import sound effect</button><button className="button" disabled={busy||effects.length>=200} onClick={onGenerate}><WandSparkles size={15}/> Generate with ElevenLabs</button></div></div>
-    {effects.length>0&&!collapsed&&<><p className="effects-help">Drag clips on the Sound Effects track to move them; select one to trim its edges. Effects play over the scene and are mixed into the exported backing WAV.</p>
+    {effects.length>0&&!collapsed&&<>
     <div className="effects-content"><div className="effects-list">{effects.map(e=><button className={`effect-row ${e.id===selectedId?'active':''}`} key={e.id} aria-pressed={e.id===selectedId} onContextMenu={event=>{event.preventDefault();onOpenMenu?.(event,e.id);}} onClick={()=>onSelect(e.id)}><span>{e.name}{e.missing&&<small>File missing</small>}</span><span>{formatTime(e.start)} · {(e.end-e.start).toFixed(2)}s{e.muted?' · muted':''}</span></button>)}{!effects.length&&<p className="muted">Add audio from your computer, or describe a sound for ElevenLabs to generate. Importing audio needs no API key.</p>}</div>
     {effect&&<div className="effect-editor"><label className="field"><span>Effect name</span><input aria-label="Effect name" value={effect.name} onChange={e=>update({name:e.target.value})}/></label>
       {effect.missing&&<p className="amber">This audio file is missing. Import a replacement, or mute/remove this clip before exporting.</p>}

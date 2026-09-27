@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs/promises');
@@ -27,7 +28,7 @@ const {MediaEngine}=require('../electron/media.cjs');
     async function picked(n){await page.waitForFunction(n=>document.querySelectorAll('.line-row[aria-pressed=true]').length===n,n);}
     await page.getByText('FFmpeg ready',{exact:false}).waitFor();
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},seed);
-    await button('Open').click();await count(4);
+    await menuAction(page,'open');await count(4);
     await row('I mean,').click();await row('Another person.').click({modifiers:['Control']});await picked(2);
     assert.equal(await button('Merge lines').isDisabled(),true);
     await page.getByLabel('Character for selected lines').fill('Group');await button('Apply character to 2 lines').click();
@@ -54,12 +55,12 @@ const {MediaEngine}=require('../electron/media.cjs');
     await button('Redo').click();await count(3);
     await app.evaluate(({dialog},file)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:file});},path.join(data,'saved.cvcreator'));
     // Open uses its existing save destination, so this writes back to the seed file.
-    await button('Save project').click();await button('Saved').waitFor();
+    await menuAction(page,'save');await waitSaved(page);
     const saved=JSON.parse(await fs.readFile(seed,'utf8'));
     assert.equal(saved.scenes[0].clips.length,3);
     assert.deepEqual(saved.scenes[0].clips.find(c=>c.id==='a'),{...clips[0],caption:mergedCaption,character:'Nut Vendor',end:2.76});
     assert.deepEqual(saved.scenes[0].clips.find(c=>c.id==='d'),clips[3]);
-    await button('Open').click();await count(3);await row(mergedCaption).click();
+    await menuAction(page,'open');await count(3);await row(mergedCaption).click();
     assert.equal(parseTime(await page.getByLabel('Line end time').inputValue()),2.76);
     const root=path.join(data,'export');await fs.mkdir(root);
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},root);

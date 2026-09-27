@@ -20,7 +20,7 @@ const assert = require('node:assert/strict');
   });
   try {
     const page = await app.firstWindow();
-    await page.getByText('Make a scene worth repeating.').waitFor();
+    await page.getByText('New project').waitFor();
     const boot = await page.evaluate(() => window.creator.bootstrap());
     assert.equal(boot.toolStatus.ok, true, boot.toolStatus.error);
     assert.equal(boot.settings.ffmpegPath, ffmpegPath);

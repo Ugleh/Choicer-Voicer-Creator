@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const path=require('node:path');
 const {MediaEngine}=require('../electron/media.cjs');
 (async()=>{
@@ -13,7 +14,7 @@ const {MediaEngine}=require('../electron/media.cjs');
     const selected=async n=>page.waitForFunction(n=>document.querySelectorAll('.line-row[aria-pressed=true]').length===n,n);
     await page.getByText('FFmpeg ready',{exact:false}).waitFor();
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},file);
-    await button('Open').click();await count(1);await page.locator('.line-row').click();await button('Duplicate line').click();await count(2);await selected(1);
+    await menuAction(page,'open');await count(1);await page.locator('.line-row').click();await button('Duplicate line').click();await count(2);await selected(1);
     assert.equal(await page.getByLabel('Caption',{exact:true}).inputValue(),'Together!');assert.equal(await page.getByLabel('Line start time',{exact:true}).inputValue(),'00:00.500');assert.equal(await page.getByLabel('Line end time',{exact:true}).inputValue(),'00:01.500');
     await page.waitForFunction(()=>document.activeElement?.getAttribute('list')==='characters');
     assert.deepEqual(await page.getByLabel('Character',{exact:true}).evaluate(el=>[el.selectionStart,el.selectionEnd]),[0,9]);
@@ -28,10 +29,10 @@ const {MediaEngine}=require('../electron/media.cjs');
     await page.locator('.line-row').filter({hasText:'Speaker A'}).click();await page.locator('.line-row').filter({hasText:'Speaker B'}).click({modifiers:['Control']});
     await button('Duplicate selected lines').click();await count(6);await selected(2);assert.match(await page.locator('.line-row[aria-pressed=true]').nth(0).innerText(),/Speaker A/);assert.match(await page.locator('.line-row[aria-pressed=true]').nth(1).innerText(),/Speaker B/);
     await button('Undo').click();await count(4);await button('Redo').click();await count(6);await button('Undo').click();await count(4);
-    await button('Save project').click();await button('Saved').waitFor();const saved=JSON.parse(await fs.readFile(file,'utf8')),clips=saved.scenes[0].clips;
+    await menuAction(page,'save');await waitSaved(page);const saved=JSON.parse(await fs.readFile(file,'utf8')),clips=saved.scenes[0].clips;
     assert.equal(new Set(clips.map(c=>c.id)).size,4);assert.deepEqual(clips.find(c=>c.id==='original'),original);assert.deepEqual(clips.map(c=>c.character),['Speaker A','Speaker B','Speaker C','Speaker D']);
     for(const clip of clips)assert.deepEqual([clip.caption,clip.start,clip.end],['Together!',.5,1.5]);
-    await button('Open').click();await count(4);await page.locator('.line-row').filter({hasText:'Speaker D'}).click();assert.equal(await page.getByLabel('Line start time',{exact:true}).inputValue(),'00:00.500');
+    await menuAction(page,'open');await count(4);await page.locator('.line-row').filter({hasText:'Speaker D'}).click();assert.equal(await page.getByLabel('Line start time',{exact:true}).inputValue(),'00:00.500');
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1120,760));await button('Duplicate line').scrollIntoViewIfNeeded();
     const layout=await page.locator('.line-inspector').evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth}));assert.ok(layout.scroll<=layout.client+1);await page.screenshot({path:'.test-data/duplicate-lines-small.png'});
     const root=path.join(data,'export');await fs.mkdir(root);await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},root);

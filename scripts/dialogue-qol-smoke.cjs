@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 const {MediaEngine}=require('../electron/media.cjs');
 (async()=>{
@@ -7,7 +8,7 @@ const {MediaEngine}=require('../electron/media.cjs');
  const launch=process.env.CV_PACKAGED_EXE?{executablePath:path.resolve(process.env.CV_PACKAGED_EXE),args:[]}:{args:[path.resolve('.')]};const app=await electron.launch({...launch,env:{...process.env,CV_TEST_DATA:data}});
  try{
   const page=await app.firstWindow(),errors=[];page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));const button=name=>page.getByRole('button',{name,exact:true}),rows=page.locator('.line-row');
-  await page.getByText('FFmpeg ready',{exact:false}).waitFor();await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},file);await button('Open').click();await rows.last().waitFor();
+  await page.getByText('FFmpeg ready',{exact:false}).waitFor();await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},file);await menuAction(page,'open');await rows.last().waitFor();
   assert.equal(await page.getByLabel('Line padding seconds').inputValue(),'0.5');assert.equal(await button('Export pack').isEnabled(),true);
   await rows.nth(1).click();await rows.nth(4).click({modifiers:['Shift']});assert.equal(await page.locator('.line-row.active').count(),4);await rows.first().click({modifiers:['Shift']});assert.equal(await page.locator('.line-row.active').count(),2);
   await rows.nth(4).click({modifiers:['Control']});assert.equal(await page.locator('.line-row.active').count(),3);await rows.nth(3).click({modifiers:['Control','Shift']});assert.equal(await page.locator('.line-row.active').count(),4);
@@ -18,8 +19,8 @@ const {MediaEngine}=require('../electron/media.cjs');
   await button('Play line').click();await page.waitForFunction(()=>!document.querySelector('video').paused);
   assert.equal(await page.locator('.preview-panel').evaluate(el=>document.activeElement===el),true);const preview=await page.locator('.video-wrap').boundingBox();assert.ok(preview.y>=60&&preview.y<500);
   await page.waitForFunction(()=>document.querySelector('video').paused&&document.querySelector('video').currentTime>4);assert.ok(Math.abs(await page.locator('video').evaluate(v=>v.currentTime)-(2+1.9+.5-1/24))<.08);
-  await page.getByLabel('Line padding seconds').fill('0.25');await page.getByLabel('Line padding seconds').press('Enter');await button('Save project').click();await button('Saved').waitFor();let saved=JSON.parse(await fs.readFile(file,'utf8'));assert.equal(saved.scenes[0].linePadding,.25);assert.deepEqual(saved.scenes[0].clips.map(c=>[c.start,c.end]),clips.map(c=>[c.start,c.end]));
-  await button('Open').click();await rows.last().waitFor();assert.equal(await page.getByLabel('Line padding seconds').inputValue(),'0.25');
+  await page.getByLabel('Line padding seconds').fill('0.25');await page.getByLabel('Line padding seconds').press('Enter');await menuAction(page,'save');await waitSaved(page);let saved=JSON.parse(await fs.readFile(file,'utf8'));assert.equal(saved.scenes[0].linePadding,.25);assert.deepEqual(saved.scenes[0].clips.map(c=>[c.start,c.end]),clips.map(c=>[c.start,c.end]));
+  await menuAction(page,'open');await rows.last().waitFor();assert.equal(await page.getByLabel('Line padding seconds').inputValue(),'0.25');
   const root=path.join(data,'single');await fs.mkdir(root);await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},root);await button('Export pack').click();await page.getByRole('dialog',{name:'Your packs are ready'}).waitFor();
   const pack=path.join(root,'QoL test - Scene one'),engine=new MediaEngine(path.join(data,'probe'),()=>({}));assert.equal((await engine.probe(path.join(pack,'_backing_track.wav'))).duration,4);assert.match(await fs.readFile(path.join(pack,'03_Dialogue3.ini'),'utf8'),/dub_timestamps=\[1\.350\]/);assert.equal((await engine.probe(path.join(pack,'03_Dialogue3.wav'))).duration,.8);
   await button('Done').click();const combined=path.join(data,'combined');await fs.mkdir(combined);await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},combined);await button('Export collection').click();await page.getByRole('dialog',{name:'Your packs are ready'}).waitFor();assert.equal((await engine.probe(path.join(combined,'QoL test','_backing_track.wav'))).duration,6);

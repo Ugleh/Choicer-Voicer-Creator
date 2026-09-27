@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const path=require('node:path');
 (async()=>{
   const fixture=JSON.parse(await fs.readFile('.test-data/fixture-path.json','utf8'));
@@ -5,10 +6,10 @@ const {_electron:electron}=require('playwright');const assert=require('node:asse
   const app=await electron.launch({args:[path.resolve('.')],env:{...process.env,CV_TEST_DATA:testData}});
   const errors=[];const page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(20000);
   try{
-    await page.getByText('Make a scene worth repeating.').waitFor();await page.getByText('FFmpeg ready',{exact:false}).waitFor();
+    await page.getByText('New project').waitFor();await page.getByText('FFmpeg ready',{exact:false}).waitFor();
     await page.screenshot({path:'.test-data/welcome.png'});
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},fixture.mkv);
-    await page.getByRole('button',{name:'Choose a video'}).click();
+    await page.getByRole('button',{name:'Open Video…'}).click();
     await page.getByRole('button',{name:'Create scene',exact:true}).waitFor({state:'visible'});
     await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
     await page.getByRole('spinbutton',{name:'Selection in seconds'}).fill('2');await page.getByRole('spinbutton',{name:'Selection out seconds'}).fill('6');
@@ -27,14 +28,14 @@ const {_electron:electron}=require('playwright');const assert=require('node:asse
     await page.getByRole('button',{name:'Play line',exact:true}).click();await page.waitForFunction(()=>document.querySelector('audio')?.currentTime>.5);await page.getByRole('button',{name:'Pause',exact:true}).click();
     await page.screenshot({path:'.test-data/editor.png',fullPage:true});
     await app.evaluate(({dialog},file)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:file});},path.join(testData,'collection.cvcreator'));
-    await page.getByRole('button',{name:'Save project',exact:true}).click();await page.getByRole('button',{name:'Saved',exact:true}).waitFor();
+    await menuAction(page,'save');await waitSaved(page);
     const saved=JSON.parse(await fs.readFile(path.join(testData,'collection.cvcreator'),'utf8'));assert.equal(saved.scenes[0].clips[0].start,.42);assert.equal(saved.scenes[0].backing.reviewed,true);
     await page.getByRole('button',{name:'Remove scene',exact:true}).click();
     await page.getByRole('button',{name:'Undo',exact:true}).click();
     await page.getByRole('button',{name:/01 The test scene/}).click();
-    await page.getByRole('button',{name:'Save project',exact:true}).click();await page.getByRole('button',{name:'Saved',exact:true}).waitFor();
+    await menuAction(page,'save');await waitSaved(page);
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},path.join(testData,'collection.cvcreator'));
-    await page.getByRole('button',{name:'Open',exact:true}).click();
+    await menuAction(page,'open');
     await page.getByRole('checkbox',{name:'I listened and checked the backing track'}).waitFor();
     assert.equal(await page.getByRole('checkbox',{name:'I listened and checked the backing track'}).isChecked(),true);
     const exported=path.join(testData,'export');await fs.mkdir(exported);
@@ -42,7 +43,7 @@ const {_electron:electron}=require('playwright');const assert=require('node:asse
     await page.getByRole('button',{name:'Export pack',exact:true}).click();await page.getByRole('dialog',{name:'Your packs are ready'}).waitFor();
     const names=await fs.readdir(exported);assert.equal(names.length,1);assert.ok((await fs.readdir(path.join(exported,names[0]))).includes('dub_video.ogv'));
     await page.getByRole('button',{name:'Done',exact:true}).click();
-    await page.getByRole('button',{name:'Settings and usage'}).click();await page.getByRole('dialog',{name:'Settings & usage'}).waitFor();await page.screenshot({path:'.test-data/settings.png'});
+    await menuAction(page,'settings');await page.getByRole('dialog',{name:'Settings & usage'}).waitFor();await page.screenshot({path:'.test-data/settings.png'});
     assert.deepEqual(errors,[]);console.log('Desktop smoke passed: native MKV import, playback, scene, line, backing, save/reopen, remove/undo, export, settings.');
   } finally {await app.evaluate(({app})=>app.exit(0));await app.close().catch(()=>{});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 (async()=>{
   const fixture=JSON.parse(await fs.readFile('.test-data/fixture-path.json','utf8'));
@@ -10,7 +11,7 @@ const {_electron:electron}=require('playwright'),assert=require('node:assert/str
     const page=await app.firstWindow();page.setDefaultTimeout(20000);const errors=[];page.on('pageerror',e=>errors.push(e.message));const button=name=>page.getByRole('button',{name,exact:true});
     await page.getByText('FFmpeg ready',{exact:false}).waitFor();
     await app.evaluate(({dialog},{file,copy})=>{global.saves=[];dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showSaveDialog=async options=>{global.saves.push(options);return {canceled:false,filePath:copy};};dialog.showMessageBox=async()=>({response:1});},{file,copy});
-    await button('Open').click();await page.locator('.line-row').first().waitFor();await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
+    await menuAction(page,'open');await page.locator('.line-row').first().waitFor();await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
     const checkSize=async()=>{
       const box=await page.locator('.preview-panel').boundingBox(),video=await page.locator('.video-wrap').boundingBox(),info=await page.locator('.preview-info .mono').boundingBox(),toggle=await page.getByRole('checkbox',{name:'Show lines',exact:true}).boundingBox();
       assert.ok(Math.abs(box.width-2-video.width)<2,'video fills preview width');assert.ok(toggle.y>info.y+info.height,'Show lines below resolution');
@@ -31,7 +32,7 @@ const {_electron:electron}=require('playwright'),assert=require('node:assert/str
     const second=page.locator('.scene-item').filter({hasText:'Second scene'});await second.click({button:'right'});
     await page.getByRole('menuitemcheckbox').click();assert.equal(await page.locator('.export-excluded').count(),1);
     assert.equal(await page.locator('h1').textContent(),'First scene');
-    await button('Save As…').click();await page.getByText('Collection saved.',{exact:false}).waitFor();
+    await menuAction(page,'saveAs');await page.getByText('Collection saved.',{exact:false}).waitFor();
     let saved=JSON.parse(await fs.readFile(copy,'utf8'));assert.equal(saved.scenes[1].excludeFromCollection,true);assert.equal(JSON.parse(await fs.readFile(file,'utf8')).scenes[1].excludeFromCollection,undefined);
     await page.locator('.scene-item').first().click({button:'right'});await page.getByRole('menuitemcheckbox').click();assert.equal(await button('Export collection').isDisabled(),true);assert.equal(await button('Export pack').isEnabled(),true);
     await page.keyboard.press('Control+s');await page.waitForTimeout(600);saved=JSON.parse(await fs.readFile(copy,'utf8'));assert.ok(saved.scenes.every(s=>s.excludeFromCollection));assert.equal((await app.evaluate(()=>global.saves)).length,1,'Save uses the new path without prompting');
@@ -39,11 +40,11 @@ const {_electron:electron}=require('playwright'),assert=require('node:assert/str
     await second.click({button:'right'});await page.getByRole('menuitem',{name:'Delete scene',exact:true}).click();assert.equal(await page.locator('.scene-item').count(),1);assert.equal(await page.locator('h1').textContent(),'First scene');await button('Undo').click();assert.equal(await page.locator('.scene-item').count(),2);
     await second.click({button:'right'});await page.keyboard.press('Escape');assert.equal(await page.getByRole('menu').count(),0);
     await page.keyboard.press('Control+Shift+s');await page.waitForTimeout(600);assert.equal((await app.evaluate(()=>global.saves)).length,2);
-    await app.evaluate(({dialog})=>{dialog.showSaveDialog=async()=>({canceled:true});});await button('Save As…').click();
-    await button('Save project').or(button('Saved')).click();assert.equal(JSON.parse(await fs.readFile(file,'utf8')).scenes[0].excludeFromCollection,undefined,'Cancel Save As leaves the original file unchanged');
-    await app.evaluate(({dialog},copy)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[copy]});},copy);await button('Open').click();await page.locator('.export-excluded').waitFor();
+    await app.evaluate(({dialog})=>{dialog.showSaveDialog=async()=>({canceled:true});});await menuAction(page,'saveAs');
+    await menuAction(page,'save');assert.equal(JSON.parse(await fs.readFile(file,'utf8')).scenes[0].excludeFromCollection,undefined,'Cancel Save As leaves the original file unchanged');
+    await app.evaluate(({dialog},copy)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[copy]});},copy);await menuAction(page,'open');await page.locator('.export-excluded').waitFor();
     await page.setViewportSize({width:1120,height:760});await page.locator('main').evaluate(e=>e.scrollTop=0);await checkSize();await page.screenshot({path:'.test-data/editor-qol-small.png'});
-    await button('Pin preview').click();await page.locator('main').evaluate(e=>e.scrollTop=e.scrollHeight);await page.waitForTimeout(150);assert.ok((await page.locator('.preview-panel').boundingBox()).y>=71);await page.screenshot({path:'.test-data/editor-qol-pinned-small.png'});
+    await button('Pin preview').click();await page.locator('main').evaluate(e=>e.scrollTop=e.scrollHeight);await page.waitForTimeout(150);assert.ok((await page.locator('.preview-panel').boundingBox()).y>=(await page.locator('main').boundingBox()).y);await page.screenshot({path:'.test-data/editor-qol-pinned-small.png'});
     assert.deepEqual(errors,[]);console.log('Editor QOL verified: preview sizing and sticky playback, compact empty effects, Save As/Save shortcuts, scene exclusion persistence, context deletion/Undo, responsive layout.');
   }catch(error){await (await app.firstWindow()).screenshot({path:'.test-data/editor-qol-failure.png'});throw error;}finally{await app.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

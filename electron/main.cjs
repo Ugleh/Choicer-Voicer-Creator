@@ -13,6 +13,7 @@ const {shareContent}=require('../shared/sharing.mjs');
 const {pricingSettings,validatePricing,PRICING_SOURCES}=require('../shared/pricing.mjs');
 const {VIDEO_EXTENSIONS,VIDEO_FILE_ERROR,isVideoFile}=require('../shared/video-formats.mjs');
 const {importEffect}=require('./sound-effects.cjs');
+const {installMenu}=require('./menu.cjs');
 if(process.env.CV_TEST_DATA)app.setPath('userData',process.env.CV_TEST_DATA);
 protocol.registerSchemesAsPrivileged([{scheme:'cvmedia',privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true,corsEnabled:true}}]);
 let win,engine,provider,thumbnails,data,settings={},jobs=[],busy=false,projectPath=null,dirty=false;
@@ -72,7 +73,11 @@ app.whenReady().then(async()=>{
       return new Response(Readable.toWeb(createReadStream(file)),{headers:{...headers,'Content-Length':String(stat.size)}});
     }catch{return new Response('Media unavailable',{status:404});}
   });
-  win=new BrowserWindow({width:1500,height:980,minWidth:1120,minHeight:760,title:`Choicer Voicer Creator v${app.getVersion()}`,backgroundColor:'#111315',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  win=new BrowserWindow({width:1500,height:980,minWidth:1120,minHeight:760,title:`Choicer Voicer Creator v${app.getVersion()}`,backgroundColor:'#111315',autoHideMenuBar:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  installMenu(win);
+  handle('newProject',async()=>{await saveQueue;await fs.rm(path.join(data,'recovery.json'),{force:true});projectPath=null;dirty=false;return true;},true);
+  handle('editText',async action=>{if(!['undo','redo','cut','copy','paste','delete','selectAll'].includes(action))throw new Error('Unknown editing action.');win.webContents[action]();});
+  handle('windowAction',async action=>{if(action==='exit')win.close();else if(action==='fullscreen')win.setFullScreen(!win.isFullScreen());else throw new Error('Unknown window action.');});
   win.on('page-title-updated',event=>event.preventDefault());
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('will-navigate',(event)=>event.preventDefault());

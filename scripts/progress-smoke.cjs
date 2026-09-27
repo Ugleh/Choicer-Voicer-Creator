@@ -34,7 +34,7 @@ const path = require('node:path');
       });
     }, fixture.mkv);
     await page.clock.install();
-    await page.getByRole('button', { name: 'Choose a video' }).click();
+    await page.getByRole('button', { name: 'Open Video…' }).click();
     const panel = page.getByRole('status');
     await panel.getByText('Creating video preview', { exact: true }).waitFor();
     assert.equal(await panel.locator('progress').getAttribute('value'), null);

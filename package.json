@@ -1,6 +1,6 @@
 {
   "name": "choicer-voicer-creator",
-  "version": "0.1.22",
+  "version": "0.1.24",
   "private": true,
   "description": "A local desktop workshop for Choicer Voicer dub packs",
   "author": "Choicer Voicer Creator contributors",
@@ -39,6 +39,9 @@
     "test:audio-editing": "node --test tests/audio-editing.test.cjs",
     "test:audio-editing-ui": "node scripts/audio-editing-smoke.cjs",
     "test:editor-qol": "node scripts/editor-qol-smoke.cjs",
+    "test:project-menu": "node scripts/project-menu-smoke.cjs",
+    "test:workspace-controls": "node scripts/workspace-controls-smoke.cjs",
+    "test:scene-edits": "node --test tests/scene-edits.test.mjs",
     "test:timeline-drag": "node --test tests/timeline-drag.test.mjs",
     "test:timeline-drag-ui": "node scripts/timeline-drag-smoke.cjs",
     "package": "npm run build && electron-builder --win dir --x64 --publish never",

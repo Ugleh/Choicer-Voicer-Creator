@@ -83,3 +83,11 @@ The packaged app passed timeline-drag, audio-editing, and precision-timing deskt
 ## v0.1.22 sound-effect clipboard and FFmpeg compatibility
 
 The focused audio tests pass, including a regression that simulates FFmpeg rejecting `-filter_complex_script` and verifies the inline filter fallback. Sound effects can be selected in the list or timeline, copied/cut/pasted at the current playhead, and deleted with Delete or Backspace. The context menu exposes the same actions. The Windows production build and packaged UI check are run by the tag-triggered GitHub workflow because this restricted workspace cannot start esbuild's parent-directory process.
+
+## v0.1.23 project switching and application menu
+
+The production build and packaged desktop checks pass. The project-menu check verifies visible native menus, Open Video via keyboard, opening projects, dialogue Delete/Undo/Redo through Edit, Save & continue, cancelled saves, cancelled video selection, fresh save paths, cleared Undo history, settings, and help. The packaged video-drop regression also passes with confirmation for existing sources: MP4/MKV replacement, MOV/WebM/AVI imports, source relocation, invalid audio-only media, and preservation of saved projects. All tests use isolated data; personal projects and settings are untouched. The local launcher prefers v0.1.23.
+
+## v0.1.24 editing controls
+
+The production build and local Windows package pass. Eleven focused unit checks cover dialogue selection, group movement with bounds and snapping, clipboard timing/metadata/unique IDs/overflow rejection, and scene reordering. The packaged workspace check covers the dark menus, group drag and Undo, dialogue/effect copy-cut-paste (including cross-scene dialogue), text-field deletion safety, measurement without changing project data or the playhead, preview gain without stored export changes, scene order with Undo/Redo and save/reopen, and minimum-width layout. Packaged project switching, timeline snapping, and full audio-editing checks also pass, including range repair, simulated generation, trim, and export. A detached-preview ResizeObserver error found by the project-switching check was fixed and retested. No paid requests or personal projects were used.

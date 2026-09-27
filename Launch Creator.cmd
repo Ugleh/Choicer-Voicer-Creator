@@ -1,5 +1,13 @@
 @echo off
 cd /d "%~dp0"
+if exist "release\v0.1.24\win-unpacked\Choicer Voicer Creator.exe" (
+  start "" "release\v0.1.24\win-unpacked\Choicer Voicer Creator.exe"
+  exit /b 0
+)
+if exist "release\v0.1.23\win-unpacked\Choicer Voicer Creator.exe" (
+  start "" "release\v0.1.23\win-unpacked\Choicer Voicer Creator.exe"
+  exit /b 0
+)
 if exist "release\v0.1.22\win-unpacked\Choicer Voicer Creator.exe" (
   start "" "release\v0.1.22\win-unpacked\Choicer Voicer Creator.exe"
   exit /b 0

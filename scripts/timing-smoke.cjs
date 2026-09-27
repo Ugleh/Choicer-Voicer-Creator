@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const path=require('node:path');
 const {MediaEngine}=require('../electron/media.cjs');
 (async()=>{
@@ -14,7 +15,7 @@ const {MediaEngine}=require('../electron/media.cjs');
     const set=async(label,value)=>{await page.getByLabel(label,{exact:true}).fill(value);await page.getByLabel(label,{exact:true}).press('Enter');};
     await page.getByText('FFmpeg ready',{exact:false}).waitFor();
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},file);
-    await button('Open').click();await button('Trim scene').waitFor();await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
+    await menuAction(page,'open');await button('Trim scene').waitFor();await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
     assert.equal(await page.locator('.ruler span').first().textContent(),'00:00.000');
     await button('Add dialogue line').click();
     await set('New line start time','00:01.234');await set('New line end time','2.345');
@@ -39,11 +40,11 @@ const {MediaEngine}=require('../electron/media.cjs');
     await button('Trim scene').click();await set('Trim scene start time','1');await set('Trim scene end time','3');await button('Apply trim').click();
     await page.waitForFunction(()=>document.querySelectorAll('.line-row').length===2);assert.equal(await page.locator('.selection-toolbar').count(),0);
     assert.equal(await page.getByRole('checkbox',{name:'I listened and checked the backing track'}).isChecked(),true);
-    await button('Save project').click();await button('Saved').waitFor();let saved=JSON.parse(await fs.readFile(file,'utf8'));
+    await menuAction(page,'save');await waitSaved(page);let saved=JSON.parse(await fs.readFile(file,'utf8'));
     assert.equal(saved.scenes[0].start,3);assert.equal(saved.scenes[0].end,5);assert.deepEqual(saved.scenes[0].clips.map(c=>[c.id,c.start,c.end]),[['selected',0,1],['behind',0,1.5]]);
     const engine=new MediaEngine(path.join(data,'probe'),()=>({}));for(const stem of ['path','vocalsPath']){assert.notEqual(saved.scenes[0].backing[stem],fixture.backing);assert.equal((await engine.probe(saved.scenes[0].backing[stem])).duration,2);}
-    await button('Undo').click();assert.equal(await page.locator('.line-row').count(),4);await button('Save project').click();await button('Saved').waitFor();saved=JSON.parse(await fs.readFile(file,'utf8'));assert.equal(saved.scenes[0].backing.path,fixture.backing);assert.equal(saved.scenes[0].start,2);
-    await button('Redo').click();await button('Save project').click();await button('Saved').waitFor();await button('Open').click();await page.waitForFunction(()=>document.querySelectorAll('.line-row').length===2);
+    await button('Undo').click();assert.equal(await page.locator('.line-row').count(),4);await menuAction(page,'save');await waitSaved(page);saved=JSON.parse(await fs.readFile(file,'utf8'));assert.equal(saved.scenes[0].backing.path,fixture.backing);assert.equal(saved.scenes[0].start,2);
+    await button('Redo').click();await menuAction(page,'save');await waitSaved(page);await menuAction(page,'open');await page.waitForFunction(()=>document.querySelectorAll('.line-row').length===2);
     await button('Backing track').click();await button('Play').click();await page.waitForFunction(()=>document.querySelector('audio')?.currentTime>.3);await button('Pause').click();
     await button('Trim scene').click();await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1120,760));await button('Cancel trim').scrollIntoViewIfNeeded();
     const size=await page.locator('.selection-toolbar').evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth}));assert.ok(size.scroll<=size.client+1);await page.screenshot({path:'.test-data/trim-scene-small.png'});assert.deepEqual(errors,[]);

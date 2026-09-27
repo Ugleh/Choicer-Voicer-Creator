@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 (async()=>{
   const fixture=JSON.parse(await fs.readFile('.test-data/fixture-path.json','utf8')),data=await fs.mkdtemp(path.resolve('.test-data','drag-ui-')),file=path.join(data,'drag.cvcreator');
@@ -7,10 +8,10 @@ const {_electron:electron}=require('playwright'),assert=require('node:assert/str
   const launch=process.env.CV_PACKAGED_EXE?{executablePath:path.resolve(process.env.CV_PACKAGED_EXE),args:[]}:{args:[path.resolve('.')]};const app=await electron.launch({...launch,env:{...process.env,CV_TEST_DATA:data}});
   try{
     const page=await app.firstWindow();page.setDefaultTimeout(15000);const errors=[];page.on('pageerror',e=>errors.push(e.message));const button=name=>page.getByRole('button',{name,exact:true});
-    await page.getByText('FFmpeg ready',{exact:false}).waitFor();await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},file);await button('Open').click();await page.locator('.effect-clip').first().waitFor();await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
+    await page.getByText('FFmpeg ready',{exact:false}).waitFor();await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},file);await menuAction(page,'open');await page.locator('.effect-clip').first().waitFor();await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
     await page.getByLabel('Scene playhead',{exact:true}).evaluate(input=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'4');input.dispatchEvent(new Event('input',{bubbles:true}));});
     await page.waitForFunction(()=>Math.abs(document.querySelector('video').currentTime-4)<.001);
-    async function state(){await button('Save project').or(button('Saved')).click();await button('Saved').waitFor();return JSON.parse(await fs.readFile(file,'utf8')).scenes[0];}
+    async function state(){await menuAction(page,'save');await waitSaved(page);return JSON.parse(await fs.readFile(file,'utf8')).scenes[0];}
     async function drag(selector,delta,bypass=false){
       const target=page.locator(selector);await target.scrollIntoViewIfNeeded();const rect=await target.boundingBox(),timeline=await page.locator('.timeline').boundingBox(),x=rect.x+rect.width/2,y=rect.y+rect.height/2;
       if(bypass)await page.keyboard.down('Shift');await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+delta/4*timeline.width,y,{steps:8});await page.mouse.up();if(bypass)await page.keyboard.up('Shift');

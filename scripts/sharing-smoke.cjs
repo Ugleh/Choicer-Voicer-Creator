@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 const {shareContent}=require('../shared/sharing.mjs');
 (async()=>{
@@ -9,7 +10,7 @@ const {shareContent}=require('../shared/sharing.mjs');
   await page.getByText('FFmpeg ready',{exact:false}).waitFor();assert.equal(await button('Reddit').isDisabled(),true);
   // Capture native clipboard writes without replacing the user's actual clipboard.
   await app.evaluate(({dialog,clipboard},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});clipboard.write=value=>global.__shareClipboard=value;clipboard.writeText=text=>global.__shareClipboard={text};},file);
-  await button('Open').click();await page.locator('.line-row').last().waitFor();
+  await menuAction(page,'open');await page.locator('.line-row').last().waitFor();
   const exportBox=await button('Export collection').boundingBox(),shareBox=await button('Reddit').boundingBox();assert.ok(shareBox.y>exportBox.y);
   await button('Reddit').click();await page.getByRole('dialog',{name:'Share collection'}).waitFor();assert.equal(await page.getByRole('tab',{name:'Reddit'}).getAttribute('aria-selected'),'true');
   await page.getByLabel('Share introduction').fill('A scene collection for everyone.');await page.getByLabel('Share download link').fill('https://example.com/kung-pow.zip');
@@ -25,8 +26,8 @@ const {shareContent}=require('../shared/sharing.mjs');
   await page.getByLabel('Share download link').fill('javascript:alert(1)');await page.getByText('Use an http:// or https:// download link without embedded credentials.',{exact:true}).waitFor();assert.equal(await button('Copy formatted description').count(),0);
   await page.getByLabel('Share download link').fill('https://example.com/kung-pow.zip');await page.getByLabel('Share introduction').fill('A scene collection for everyone.');
   await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1120,760));await page.screenshot({path:'.test-data/sharing-gamebanana-small.png'});const size=await page.getByRole('dialog',{name:'Share collection'}).evaluate(el=>({client:el.clientWidth,scroll:el.scrollWidth}));assert.ok(size.scroll<=size.client+1);
-  await button('Close dialog').click();await button('Save project').click();await button('Saved').waitFor();const saved=JSON.parse(await fs.readFile(file,'utf8'));assert.equal(saved.shareDetails.downloadUrl,'https://example.com/kung-pow.zip');assert.deepEqual(saved.scenes.map(({name,start,end,clips})=>({name,start,end,clips})),project.scenes.map(({name,start,end,clips})=>({name,start,end,clips})));
-  await button('Open').click();await page.locator('.line-row').last().waitFor();await button('Discord').click();assert.equal(await page.getByLabel('Share introduction').inputValue(),'A scene collection for everyone.');await button('Close dialog').click();await button('GameBanana').click();await page.getByRole('tab',{name:'GameBanana',selected:true}).waitFor();await button('Close dialog').click();
+  await button('Close dialog').click();await menuAction(page,'save');await waitSaved(page);const saved=JSON.parse(await fs.readFile(file,'utf8'));assert.equal(saved.shareDetails.downloadUrl,'https://example.com/kung-pow.zip');assert.deepEqual(saved.scenes.map(({name,start,end,clips})=>({name,start,end,clips})),project.scenes.map(({name,start,end,clips})=>({name,start,end,clips})));
+  await menuAction(page,'open');await page.locator('.line-row').last().waitFor();await button('Discord').click();assert.equal(await page.getByLabel('Share introduction').inputValue(),'A scene collection for everyone.');await button('Close dialog').click();await button('GameBanana').click();await page.getByRole('tab',{name:'GameBanana',selected:true}).waitFor();await button('Close dialog').click();
   await page.getByLabel('Scene name',{exact:true}).fill('New scene title');await button('Reddit').click();assert.ok((await page.getByLabel('Reddit share text').inputValue()).includes('New scene title'));await page.screenshot({path:'.test-data/sharing-reddit-small.png'});assert.deepEqual(errors,[]);
   console.log('Sharing UI passed: sidebar placement, platform formats, accurate character stats, native clipboard bridge, Discord chunks, escaped HTML, download validation, save/reopen, refreshed scene names and minimum-width layout.');
  }catch(error){const page=await app.firstWindow();console.error(await page.locator('body').innerText());await page.screenshot({path:'.test-data/sharing-failure.png',fullPage:true});throw error;}finally{await app.evaluate(({app})=>app.exit(0));await app.close().catch(()=>{});}

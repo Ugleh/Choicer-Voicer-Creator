@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 const {MediaEngine}=require('../electron/media.cjs');
 (async()=>{
@@ -11,7 +12,7 @@ const {MediaEngine}=require('../electron/media.cjs');
   try{
     const page=await app.firstWindow(),errors=[];page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));const button=name=>page.getByRole('button',{name,exact:true});
     await page.getByText('FFmpeg ready',{exact:false}).waitFor();await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},file);
-    await button('Open').click();await page.locator('.line-row').last().waitFor();
+    await menuAction(page,'open');await page.locator('.line-row').last().waitFor();
     const pictures=async(min,max)=>{
       await page.waitForFunction(({min,max})=>{const strip=document.querySelector('.filmstrip'),images=[...strip.querySelectorAll('img')];return strip.getAttribute('aria-busy')==='false'&&images.length>=6&&images.every(im=>im.complete&&im.naturalWidth>0&&+im.dataset.time>=min-.1&&+im.dataset.time<max);},{min,max});
       const times=await page.locator('.filmstrip img').evaluateAll(els=>els.map(e=>+e.dataset.time));assert.equal(new Set(times).size,times.length);return times;
@@ -29,7 +30,7 @@ const {MediaEngine}=require('../electron/media.cjs');
     await page.locator('.scene-item').last().click();await pictures(10,30);await page.locator('.source-item').click();await pictures(0,120);
     await assert.rejects(page.evaluate(()=>window.creator.timelineThumbnails('C:\\unselected.mp4',0,10,12)),/Select this media/);
     await page.locator('.scene-item').first().click();await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1120,760));await middle.dblclick();await pictures(73,79);await page.screenshot({path:'.test-data/timeline-focused-small.png'});
-    await button('Save project').click();await button('Saved').waitFor();assert.deepEqual(JSON.parse(await fs.readFile(file,'utf8')).scenes[0].clips,clips);assert.deepEqual(errors,[]);
+    await menuAction(page,'save');await waitSaved(page);assert.deepEqual(JSON.parse(await fs.readFile(file,'utf8')).scenes[0].clips,clips);assert.deepEqual(errors,[]);
     console.log('Timeline UI passed: double-click/Enter focus, edge lines, timeline clip focus, fit, Ctrl-selection, local pictures across scene/source/zoom, minimum width, and unchanged line data.');
   }catch(error){const page=await app.firstWindow();console.error(await page.locator('body').innerText());await page.screenshot({path:'.test-data/timeline-failure.png',fullPage:true});throw error;}finally{await app.evaluate(({app})=>app.exit(0));await app.close().catch(()=>{});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

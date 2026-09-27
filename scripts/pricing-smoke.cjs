@@ -1,3 +1,4 @@
+const {menuAction,waitSaved}=require('./menu-test.cjs');
 const {_electron:electron}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 (async()=>{
   const data=path.resolve('.test-data','pricing-ui-'+Date.now());await fs.mkdir(data,{recursive:true});
@@ -9,7 +10,7 @@ const {_electron:electron}=require('playwright'),assert=require('node:assert/str
   const app=await electron.launch({...launch,env:{...process.env,CV_TEST_DATA:data}});
   try{
     const page=await app.firstWindow(),errors=[];page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));
-    const button=name=>page.getByRole('button',{name,exact:true}),open=()=>button('Settings and usage').click();
+    const button=name=>page.getByRole('button',{name,exact:true}),open=()=>menuAction(page,'settings');
     const tier=page.getByLabel('Subscription tier'),rate=page.getByLabel('Scribe v2 USD per hour'),stems=page.getByLabel('Two stems USD per minute'),hours=page.getByLabel('Scribe v2 included hours per month'),custom=page.getByLabel('Use custom rates');
     await page.getByText('FFmpeg ready',{exact:false}).waitFor();await open();
     assert.equal(await custom.isChecked(),true);assert.equal(await rate.inputValue(),'0.6');assert.equal(await stems.inputValue(),'');assert.equal(await hours.inputValue(),'');
@@ -34,7 +35,7 @@ const {_electron:electron}=require('playwright'),assert=require('node:assert/str
     const fixture=JSON.parse(await fs.readFile('.test-data/fixture-path.json','utf8')),projectFile=path.join(data,'project.cvcreator');
     await fs.writeFile(projectFile,JSON.stringify({version:1,name:'Price fixture',author:'',media:{path:fixture.mkv,duration:8.021,audioIndex:1},scenes:[{id:'scene',name:'Four second scene',start:2,end:6,clips:[]}]}));
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},projectFile);
-    await button('Open').click();await button('Separate with ElevenLabs').waitFor();await button('Separate with ElevenLabs').click();
+    await menuAction(page,'open');await button('Separate with ElevenLabs').waitFor();await button('Separate with ElevenLabs').click();
     await page.getByRole('dialog',{name:'Create a backing track'}).waitFor();assert.ok((await page.getByRole('dialog').innerText()).includes('$0.0050'));assert.ok((await page.getByRole('dialog').innerText()).includes('provisional two-stem rate'));
     await button('Cancel').click();await button('Suggest lines with ElevenLabs').click();await page.getByRole('dialog',{name:'Suggest dialogue lines'}).waitFor();assert.ok((await page.getByRole('dialog').innerText()).includes('$0.0002'));await button('Cancel').click();
     assert.deepEqual(JSON.parse(await fs.readFile(jobsPath,'utf8')),jobs);assert.deepEqual(errors,[]);
