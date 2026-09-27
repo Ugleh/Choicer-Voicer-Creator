@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const {lineRange}=require('../shared/line-range.mjs');
+const {effectError}=require('../shared/sound-effects.mjs');
 const id = () => crypto.randomUUID();
 const finite = n => typeof n === 'number' && Number.isFinite(n);
 const round = n => Math.round(n * 1000) / 1000;
@@ -30,7 +31,8 @@ function validateScene(scene, media, requireBacking = false) {
   if(scene.backingMissing)errors.push('The saved backing track is missing. Import it again or choose a silent background.');
   if (requireBacking && !scene.backing?.path) errors.push('Create or import a backing track.');
   if (scene.backing?.path && !scene.backing.reviewed) errors.push('Listen to the backing track and mark it reviewed.');
-  if (!scene.backing?.path) warnings.push('No backing track: the exported background is silent. Dialogue samples may contain original background audio.');
+  if (!scene.backing?.path) warnings.push((scene.effects||[]).some(e=>!e.muted)?'No backing track: only sound effects play in the exported background.':'No backing track: the exported background is silent. Dialogue samples may contain original background audio.');
+  for(const effect of scene.effects||[]){const error=effectError(effect,duration);if(error)errors.push(error);if(effect.missing&&!effect.muted)errors.push(`${effect.name}: sound effect file is missing. Reimport, mute, or remove it.`);}
   if (scene.linePadding!==undefined&&(!finite(scene.linePadding)||scene.linePadding<0||scene.linePadding>5)) errors.push('Line padding must be between 0 and 5 seconds.');
   if (scene.backing?.path && (Math.abs(scene.backing.duration - duration) > 0.15 || scene.backing.sourceStart !== scene.start || scene.backing.sourceEnd !== scene.end || scene.backing.audioIndex !== media.audioIndex)) errors.push('The backing track no longer matches the scene. Generate or import it again.');
   const ordered = [...(scene.clips || [])].sort((a,b) => a.start-b.start);
@@ -55,6 +57,8 @@ function validateProject(project) {
   for (const scene of project.scenes) {
     if (typeof scene.id !== 'string' || seen.has(scene.id) || typeof scene.name !== 'string' || !finite(scene.start) || !finite(scene.end) || !Array.isArray(scene.clips) || scene.clips.length > 10000) throw new Error('Invalid scene in project.');
     seen.add(scene.id);
+    if(scene.effects!==undefined&&(!Array.isArray(scene.effects)||scene.effects.length>200))throw new Error('A scene supports up to 200 sound effects.');
+    const effectIds=new Set();for(const effect of scene.effects||[]){const error=effectError(effect,scene.end-scene.start);if(error||effectIds.has(effect.id))throw new Error(error||'Duplicate sound effect identity.');effectIds.add(effect.id);}
     if(scene.linePadding!==undefined&&(!finite(scene.linePadding)||scene.linePadding<0||scene.linePadding>5))throw new Error('Invalid dialogue padding in project.');
     for (const clip of scene.clips) if (typeof clip.id !== 'string' || !finite(clip.start) || !finite(clip.end) || typeof clip.caption !== 'string' || typeof clip.character !== 'string') throw new Error('Invalid dialogue clip in project.');
   }

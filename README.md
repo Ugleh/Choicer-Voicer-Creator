@@ -9,6 +9,7 @@ This project was built with **ElevenLabs** in mind for separating dialogue from 
 - Import common video formats and edit scenes with a preview, waveform, and timeline pictures.
 - Create and time dialogue lines, merge or duplicate them, and rename characters in bulk.
 - Optionally use ElevenLabs for captions and background separation, or edit and export without an API key.
+- Repair selected backing-track ranges, and add imported or generated sound effects with individual volume and fades.
 - Export one scene or combine a collection into a single Dub Pack.
 - Generate Reddit, Discord, and GameBanana descriptions with scene and character statistics.
 
@@ -41,7 +42,7 @@ Get the Windows x64 app from [GitHub Releases](https://github.com/Ugleh/Choicer-
 
 Use these release assets, rather than GitHub's **Source code** archives. Builds are unsigned, so Windows may show an unknown-publisher warning. Save your project and close the editor before updating; the app does not automatically update. For ZIP updates, extract into a new folder. Each release includes SHA-256 checksums.
 
-For a local source checkout, double-click **Launch Creator.cmd**, or run `release/v0.1.18/win-unpacked/Choicer Voicer Creator.exe` after packaging. Keep the entire `win-unpacked` folder together. Save and close any older app window before reopening through the launcher to use the latest version. The running version appears in the header and in **Settings & usage**, which also shows the executable path.
+For a local source checkout, double-click **Launch Creator.cmd**, or run `release/v0.1.19/win-unpacked/Choicer Voicer Creator.exe` after packaging. Keep the entire `win-unpacked` folder together. Save and close any older app window before reopening through the launcher to use the latest version. The running version appears in the header and in **Settings & usage**, which also shows the executable path.
 
 Install [FFmpeg and FFprobe for Windows](https://ffmpeg.org/download.html#build-windows), then add them to PATH or set their executable paths in **Settings & usage** (for example, `C:\ffmpeg\bin\ffmpeg.exe` and `C:\ffmpeg\bin\ffprobe.exe`). The build needs `libtheora`, `libvorbis`, `libx264`, and `ffv1` encoders. The FFmpeg/FFprobe command-line tools are not bundled. For a source checkout, follow the development instructions below to run or package the application.
 
@@ -78,6 +79,20 @@ Overlapping lines, including identical start times for different characters, can
 
 For several characters saying the same words together, select a line and click **Duplicate line** in Edit Dialogue. It copies the exact start/end, caption, and character, then selects the copy and focuses **Character** so you can enter another speaker. Repeat for each speaker. Ctrl-click several lines and choose **Duplicate selected lines** to copy them together. Copies have independent identities and edits; Undo/Redo treats each duplication as one operation. Each copy exports its own numbered WAV and INI with the same timestamp.
 
+## Repairing part of a backing track
+
+With a backing track loaded, click **Separate a selected range** in Scene Details. Drag a range on the timeline, adjust START/END with locks and frame buttons, or enter scene times. Audition the selection, then click **Separate selected range**. Choose **Existing backing** to try removing leftover voices, or **Original scene audio** for a fresh separation. The confirmation shows the selected duration and estimated usage before uploading. Supported ranges are 0.1 seconds to 10 minutes.
+
+Only that range is sent to ElevenLabs and replaced. The rest of the backing remains intact; brief blends stay inside the selected edges to reduce clicks. Existing isolated vocals, dialogue timings, and added sound effects are preserved. The repaired backing needs listening/review again. Undo restores the previous backing, and original files are retained. **Separate again** still processes the whole scene. Separation quality can vary, and retrying does not guarantee a better result.
+
+## Sound effects
+
+The scene timeline includes a **Sound Effects** track and editing section. **Import sound effect** copies and converts a local audio clip without requiring an API key. **Generate with ElevenLabs** sends a text description to generate one effect, with a requested duration of 0.5–30 seconds and an estimate shown before the request. Imported clips may be up to ten minutes long. New clips begin at the preview playhead and are bounded by the scene end.
+
+Select an effect to name it, move it by its START time, trim its END, or choose a **Source in** point within the audio. Drag clips to move them and selected edges to trim them on the timeline. Each effect has its own **0–100% volume**, fade-in/out, and mute control. Effects can overlap. **Play in scene** auditions them with the backing; the preview's **Sound effects** checkbox temporarily silences all effects for comparison. That checkbox affects preview only; use an effect's mute control to exclude it from export.
+
+Individual and collection exports mix enabled effects into `_backing_track.wav`, including scenes with no backing input. Dialogue WAVs and the original reference audio in `dub_video.ogv` do not receive added effects. Export uses a peak limiter to prevent overloaded mixes. Scene trimming clips/rebases effects and preserves the matching source audio offsets. Edits support Undo/Redo and save with the project. Keep the cached effect WAVs: project files reference them rather than embedding audio. Missing effects are flagged and must be reimported, muted, or removed before export. Older editor versions do not support these effect tracks.
+
 ## Sharing a collection
 
 The **Reddit**, **Discord**, and **GameBanana** buttons beneath Export collection open a sharing panel. Each format includes the pack title, author, scenes, cast, and totals for lines, caption words, edited runtime, and dialogue time. Add an optional introduction and download link; they save with the project. Copy the title separately from the body. Sharing uses the current edits and does not require a successful media export, an API key, or a social account connection.
@@ -90,10 +105,11 @@ Words are counted from captions once per dialogue line, including independently 
 
 ## Keys, cloud processing, and costs
 
-Add your ElevenLabs API key in Settings. Windows encrypts it using Electron safeStorage; it is never stored in the renderer or in project files. Only selected scene audio is uploaded when **Upload scene & run** is clicked. AI jobs are limited to ten-minute scenes. Manual editing/export works without a key.
+Add your ElevenLabs API key in Settings. Windows encrypts it using Electron safeStorage; it is never stored in the renderer or in project files. Only selected scene/range audio is uploaded when **Upload scene & run** or **Upload range & run** is clicked. Sound generation sends the text prompt instead of movie audio. Audio uploads are limited to ten minutes. Manual editing/export and effect import work without a key.
 
 - Captions use `scribe_v2`, word timing, and speaker diarization. Character names still need human review.
 - Separation uses `two_stems_v1`. Named instrumental and vocal stems are decoded to WAV. The instrumental is the backing track; available isolated vocals supply exported dialogue clips. MP3 128 kbps is requested for broad account compatibility, so saving the result as PCM WAV does not make the separation lossless.
+- Sound generation uses `eleven_text_to_sound_v2`, an explicit 0.5–30 second duration, and MP3 128 kbps converted to a cached WAV. The public API reference is $0.12/minute (checked 2026-09-27). Settings support a custom sound-effects rate; estimates are not invoices or account balances. Requests are recorded in transaction history, including selected range/source for repairs.
 - This is music-oriented separation. Preservation of film effects is not guaranteed. A prepared WAV from another separation tool can be imported instead.
 - Choose your subscription tier under **Cost estimates**. The monthly API presets (checked 2026-09-26) use Scribe v2 for uploaded audio, not Scribe v2 Realtime. Creator is the default when no manual rates were saved; existing manual rates are preserved as custom. The public Creator reference is $0.22/hour and 100 included Scribe v2 hours. Two-stem separation uses a clearly labeled provisional $0.075/min estimate, derived from the published 0.5x Music generation multiplier. Enterprise/Other require custom rates. Enable **Use custom rates** for account-specific or annual pricing; transcription is entered per hour, separation per minute, and the included-hour reference is editable. Blank means unknown; zero is supported.
 - Estimates represent the audio usage value before allowances and taxes, not an additional invoice charge. Included hours are reference values, not an account balance; usage in other apps is not tracked or subtracted. Buttons open the official public pricing, stem-pricing explanation, and your subscription page. Presets are dated and do not refresh automatically.
@@ -180,6 +196,8 @@ npm run test:sharing
 npm run test:sharing-ui
 npm run test:pricing
 npm run test:pricing-ui
+npm run test:audio-editing
+npm run test:audio-editing-ui
 npm run package
 ```
 

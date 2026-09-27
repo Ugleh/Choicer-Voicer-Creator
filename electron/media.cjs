@@ -7,6 +7,7 @@ const { normalizeExecutablePath } = require('./tool-paths.cjs');
 const { ffmpegProgress } = require('./progress.cjs');
 const { collectionPlan } = require('./collection.cjs');
 const {lineRange}=require('../shared/line-range.mjs');
+const {mixBacking}=require('./sound-effects.cjs');
 
 class MediaEngine {
   constructor(cache, settings, progress = () => {}) { this.cache = cache; this.settings = settings; this.progress = progress; this.children = new Set(); this.cancelled = false; }
@@ -119,7 +120,7 @@ class MediaEngine {
     const { planSceneTrim } = await import('./scene-trim.mjs');
     const plan = planSceneTrim(scene, start, end);
     if (plan.start === scene.start && plan.end === scene.end) return scene;
-    const result = { ...scene, start: plan.start, end: plan.end, clips: plan.clips };
+    const result = { ...scene, start: plan.start, end: plan.end, clips: plan.clips, effects:plan.effects };
     if (!scene.backing) return result;
     const backing = scene.backing;
     if (backing.sourceStart !== scene.start || backing.sourceEnd !== scene.end || backing.audioIndex !== media.audioIndex || Math.abs(backing.duration - (scene.end-scene.start)) > .15) {
@@ -189,8 +190,7 @@ class MediaEngine {
         if(Math.abs(backingInfo.duration-duration)>.15)throw new Error(`${scene.name}: backing audio length does not match the scene.`);}
         const stem=`backing-${i}.wav`,segment=`scene-${i}.nut`;
         const audioFilter=`atrim=duration=${duration},aresample=48000,asetpts=N/SR/TB,apad=whole_len=${sampleCount},atrim=end_sample=${sampleCount}`;
-        const backingInput=scene.backing?.path?['-i',scene.backing.path]:['-f','lavfi','-i','anullsrc=r=48000:cl=stereo'];
-        await this.ff([...backingInput,'-map','0:a:0','-vn','-ac','2','-ar','48000','-c:a','pcm_s16le','-af',audioFilter,path.join(work,stem)],{duration:entry.outputDuration,label:`Preparing backing ${i+1}/${plan.entries.length}`});
+        await mixBacking(this,scene,path.join(work,stem),entry.outputDuration);
         // Lossless segments share one format/time base. Round each cut up to a
         // whole video frame, padding its audio by less than a frame if needed.
         const videoFilter=`trim=duration=${duration},setpts=PTS-STARTPTS,fps=${plan.fps},tpad=stop_mode=clone:stop_duration=1,trim=end_frame=${frameCount},setpts=N/(${plan.fps}*TB),scale=w='min(1280,iw)':h=-2,setsar=1`;
@@ -221,11 +221,7 @@ class MediaEngine {
     const stage=path.join(root,`.creator-${id()}`);await fs.mkdir(stage,{recursive:true});
     const duration=scene.end-scene.start;
     try {
-      if(scene.backing?.path){
-        const backingInfo=await this.probe(scene.backing.path);
-        if(Math.abs(backingInfo.duration-duration)>0.15)throw new Error('Backing audio length does not match scene.');
-        await this.normalizeAudio(scene.backing.path,path.join(stage,'_backing_track.wav'),duration);
-      }else await this.ff(['-f','lavfi','-i','anullsrc=r=48000:cl=stereo','-af',`atrim=end_sample=${Math.round(duration*48000)}`,'-c:a','pcm_s16le',path.join(stage,'_backing_track.wav')],{duration,label:'Creating silent backing track'});
+      await mixBacking(this,scene,path.join(stage,'_backing_track.wav'));
       // Keep original audio in the video for the game's original-scene preview.
       // Dub playback uses the separate backing track and player recordings.
       await this.ff(['-ss',String(scene.start),'-i',project.media.path,'-t',String(duration),'-map',`0:${project.media.videoIndex}`,'-map',`0:${project.media.audioIndex}`,'-vf',"scale=w='min(1280,iw)':h=-2",'-c:v','libtheora','-q:v','7','-pix_fmt','yuv420p','-c:a','libvorbis','-q:a','4','-ac','2',path.join(stage,'dub_video.ogv')],{duration,label:`Encoding ${scene.name}`});

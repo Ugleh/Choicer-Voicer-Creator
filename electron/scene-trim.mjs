@@ -1,4 +1,5 @@
 const round = n => Math.round(n * 1000) / 1000;
+import {trimEffects} from '../shared/sound-effects.mjs';
 
 export function planSceneTrim(scene, start, end) {
   if (!scene || ![start, end, scene.start, scene.end].every(Number.isFinite) || start < scene.start || end > scene.end || end - start < .01) {
@@ -13,5 +14,5 @@ export function planSceneTrim(scene, start, end) {
     if (clip.start < offset || clip.end > round(offset + duration)) shortened++;
     return [{ ...clip, start: a, end: b }];
   });
-  return { start, end, offset, duration, clips, removed, shortened };
+  return { start, end, offset, duration, clips, removed, shortened, effects:trimEffects(scene.effects,offset,duration) };
 }

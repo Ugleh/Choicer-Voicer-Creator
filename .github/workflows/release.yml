@@ -45,6 +45,8 @@ jobs:
         run: npm test
       - name: Verify real media processing and export
         run: npm run test:integration
+      - name: Verify range repairs and sound-effect mixing
+        run: npm run test:audio-editing
       - name: Build installer and ZIP
         run: npm run package:release
       - name: Verify release files and extracted app
