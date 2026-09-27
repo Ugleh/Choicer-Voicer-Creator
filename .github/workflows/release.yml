@@ -1,0 +1,92 @@
+name: Windows release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Check version and release notes
+        id: release
+        run: node scripts/release-assets.cjs check
+      - name: Install dependencies
+        run: npm ci
+      - name: Install FFmpeg for media tests
+        run: |
+          choco install ffmpeg --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ffmpeg -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ffprobe -version
+      - name: Run unit checks
+        run: npm test
+      - name: Verify real media processing and export
+        run: npm run test:integration
+      - name: Build installer and ZIP
+        run: npm run package:release
+      - name: Verify release files and extracted app
+        run: npm run test:release
+      - name: Retain tested downloads
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: windows-x64-${{ steps.release.outputs.tag }}
+          path: |
+            release/${{ steps.release.outputs.tag }}/*-setup.exe
+            release/${{ steps.release.outputs.tag }}/*-windows-x64.zip
+            release/${{ steps.release.outputs.tag }}/SHA256SUMS.txt
+            release/${{ steps.release.outputs.tag }}/RELEASE-NOTES.md
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          $releaseDir = "release/$env:RELEASE_TAG"
+          $stem = "Choicer-Voicer-Creator-$env:RELEASE_VERSION-windows-x64"
+          $assets = @("$releaseDir/$stem-setup.exe", "$releaseDir/$stem.zip", "$releaseDir/SHA256SUMS.txt")
+          $existingJson = gh release view $env:RELEASE_TAG --json isDraft 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if (-not ($existingJson | ConvertFrom-Json).isDraft) {
+              throw 'This version is already published. Bump the version instead of replacing downloads.'
+            }
+            # Recover an interrupted upload only while the release is a draft.
+            gh release upload $env:RELEASE_TAG @assets --clobber
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            gh release edit $env:RELEASE_TAG --notes-file "$releaseDir/RELEASE-NOTES.md"
+          } else {
+            gh release create $env:RELEASE_TAG @assets --verify-tag --draft --title "Choicer Voicer Creator $env:RELEASE_VERSION" --notes-file "$releaseDir/RELEASE-NOTES.md"
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($env:RELEASE_VERSION.Contains('-')) {
+            gh release edit $env:RELEASE_TAG --draft=false --prerelease
+          } else {
+            gh release edit $env:RELEASE_TAG --draft=false --latest
+          }

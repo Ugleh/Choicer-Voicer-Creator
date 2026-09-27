@@ -30,11 +30,18 @@ Captured from an existing **Kung Pow Enter The Fist** project in v0.1.15: three 
 
 The screenshots illustrate the editor using an existing local project. The movie, project file, generated audio, and exported pack are not part of this repository.
 
-## Open the app
+## Download and open the app
 
-Double-click **Launch Creator.cmd**, or run `release/v0.1.16/win-unpacked/Choicer Voicer Creator.exe` after packaging. Keep the entire `win-unpacked` folder together. Save and close any older app window before reopening through the launcher to use the latest version. The running version appears in the header and in **Settings & usage**, which also shows the executable path.
+Get the Windows x64 app from [GitHub Releases](https://github.com/Ugleh/Choicer-Voicer-Creator/releases/latest). **No Node.js, npm, or build tools are needed.**
 
-FFmpeg and FFprobe must be on PATH, or set their executable paths in **Settings & usage** (for example, `C:\ffmpeg\bin\ffmpeg.exe` and `C:\ffmpeg\bin\ffprobe.exe`). The build needs `libtheora`, `libvorbis`, `libx264`, and `ffv1` encoders. FFmpeg is not redistributed with this app. For a source checkout, follow the development instructions below to run or package the application.
+- **Installer:** download the `windows-x64-setup.exe` file and follow its wizard.
+- **ZIP:** download the `windows-x64.zip` file, extract it completely, and run **Choicer Voicer Creator.exe**. Keep all included files together. Settings and caches still use Windows AppData.
+
+Use these release assets, rather than GitHub's **Source code** archives. Builds are unsigned, so Windows may show an unknown-publisher warning. Save your project and close the editor before updating; the app does not automatically update. For ZIP updates, extract into a new folder. Each release includes SHA-256 checksums.
+
+For a local source checkout, double-click **Launch Creator.cmd**, or run `release/v0.1.17/win-unpacked/Choicer Voicer Creator.exe` after packaging. Keep the entire `win-unpacked` folder together. Save and close any older app window before reopening through the launcher to use the latest version. The running version appears in the header and in **Settings & usage**, which also shows the executable path.
+
+Install [FFmpeg and FFprobe for Windows](https://ffmpeg.org/download.html#build-windows), then add them to PATH or set their executable paths in **Settings & usage** (for example, `C:\ffmpeg\bin\ffmpeg.exe` and `C:\ffmpeg\bin\ffprobe.exe`). The build needs `libtheora`, `libvorbis`, `libx264`, and `ffv1` encoders. The FFmpeg/FFprobe command-line tools are not bundled. For a source checkout, follow the development instructions below to run or package the application.
 
 Supported inputs: **MP4, MKV, MOV, AVI, WebM, M4V, WMV, ASF, MPG, MPEG, TS, MTS, M2TS, FLV, OGV, 3GP, 3G2, and VOB**. The picker, drag-and-drop, and missing-source locator accept the same formats. Files must contain both video and audio, and their codecs must be supported by your FFmpeg installation. The existing preview and export pipeline handles them without extra tools or cloud processing.
 
@@ -185,7 +192,11 @@ node scripts/capture-project-screenshots.cjs "path\to\your-project.cvcreator"
 
 This opens a separate editor session, reuses the cached preview, and writes three images to `docs/screenshots/`. It checks that the source project is unchanged and does not load personal API settings. Set `CV_PACKAGED_EXE` to capture a packaged build, or `CV_FFMPEG_PATH` / `CV_FFPROBE_PATH` if the tools are not on PATH.
 
-The repository excludes local projects, movies, audio, exported packs, credentials, dependencies, and build output. Screenshots in `docs/screenshots/` are tracked. Distribute packaged builds separately from the source repository, keeping the entire `win-unpacked` folder together.
+The repository excludes local projects, movies, audio, exported packs, credentials, dependencies, and build output. Screenshots in `docs/screenshots/` are tracked.
+
+## Publishing downloadable builds
+
+`npm run package:release` creates an installer, ZIP, checksums, and release notes under `release/vVERSION/`. `npm run test:release` checks those downloads and launches the extracted ZIP in an isolated profile. Pushing a matching `vVERSION` tag runs the **Windows release** GitHub Actions workflow and publishes the tested downloads. Manual workflow runs on a branch produce build artifacts without publishing. See [release instructions](docs/RELEASING.md).
 
 ## Current limits
 

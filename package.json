@@ -1,14 +1,19 @@
 {
   "name": "choicer-voicer-creator",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": true,
   "description": "A local desktop workshop for Choicer Voicer dub packs",
   "author": "Choicer Voicer Creator contributors",
+  "homepage": "https://github.com/Ugleh/Choicer-Voicer-Creator",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ugleh/Choicer-Voicer-Creator.git"
+  },
   "main": "electron/main.cjs",
   "engines": { "node": ">=22.12.0" },
   "scripts": {
     "dev": "node scripts/dev.cjs",
-    "build": "vite build",
+    "build": "vite build && node scripts/write-third-party-notices.cjs",
     "start": "electron .",
     "test": "node --test tests/core.test.cjs tests/providers.test.cjs tests/tool-paths.test.cjs tests/progress.test.cjs tests/selection.test.mjs tests/dialogue.test.mjs tests/preview.test.mjs tests/timing.test.mjs",
     "test:integration": "node --test tests/integration.cjs",
@@ -31,7 +36,10 @@
     "test:sharing-ui": "node scripts/sharing-smoke.cjs",
     "test:pricing": "node --test tests/pricing.test.mjs tests/providers.test.cjs",
     "test:pricing-ui": "node scripts/pricing-smoke.cjs",
-    "package": "npm run build && electron-builder --win dir"
+    "package": "npm run build && electron-builder --win dir --x64 --publish never",
+    "package:release": "node scripts/release-assets.cjs check && npm run build && electron-builder --win --x64 --publish never && node scripts/release-assets.cjs assets",
+    "test:package": "node scripts/verify-package.cjs",
+    "test:release": "node scripts/verify-release.cjs"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",
@@ -50,7 +58,7 @@
     "appId": "local.choicervoicer.creator",
     "productName": "Choicer Voicer Creator",
     "directories": {
-      "output": "release/v0.1.16"
+      "output": "release/v${version}"
     },
     "files": [
       "dist/**/*",
@@ -58,9 +66,25 @@
       "shared/**/*",
       "package.json"
     ],
+    "extraFiles": [
+      { "from": "docs/DOWNLOAD-README.txt", "to": "README.txt" },
+      { "from": "dist/THIRD-PARTY-NOTICES.txt", "to": "THIRD-PARTY-NOTICES.txt" }
+    ],
+    "publish": null,
     "win": {
-      "target": "dir",
-      "signAndEditExecutable": false
+      "target": ["nsis", "zip"],
+      "artifactName": "Choicer-Voicer-Creator-${version}-windows-${arch}.${ext}",
+      "signExecutable": false
+    },
+    "nsis": {
+      "artifactName": "Choicer-Voicer-Creator-${version}-windows-${arch}-setup.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false
     }
   }
 }
