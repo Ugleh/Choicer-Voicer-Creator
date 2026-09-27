@@ -21,7 +21,7 @@ const {_electron:electron}=require('playwright');const assert=require('node:asse
     await page.getByRole('button',{name:'Play line',exact:true}).click();await page.waitForFunction(()=>document.querySelector('video').currentTime>2.5);
     await page.getByRole('button',{name:'Pause',exact:true}).click();
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},fixture.backing);
-    await page.getByRole('button',{name:'or import a prepared audio file'}).click();await page.getByText('Review needed',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Import a prepared audio file'}).click();await page.getByText('Review needed',{exact:true}).waitFor();
     await page.getByRole('checkbox',{name:'I listened and checked the backing track'}).check();
     await page.getByRole('button',{name:'Backing track',exact:true}).click();
     await page.getByRole('button',{name:'Play line',exact:true}).click();await page.waitForFunction(()=>document.querySelector('audio')?.currentTime>.5);await page.getByRole('button',{name:'Pause',exact:true}).click();

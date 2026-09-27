@@ -41,7 +41,7 @@ Get the Windows x64 app from [GitHub Releases](https://github.com/Ugleh/Choicer-
 
 Use these release assets, rather than GitHub's **Source code** archives. Builds are unsigned, so Windows may show an unknown-publisher warning. Save your project and close the editor before updating; the app does not automatically update. For ZIP updates, extract into a new folder. Each release includes SHA-256 checksums.
 
-For a local source checkout, double-click **Launch Creator.cmd**, or run `release/v0.1.17/win-unpacked/Choicer Voicer Creator.exe` after packaging. Keep the entire `win-unpacked` folder together. Save and close any older app window before reopening through the launcher to use the latest version. The running version appears in the header and in **Settings & usage**, which also shows the executable path.
+For a local source checkout, double-click **Launch Creator.cmd**, or run `release/v0.1.18/win-unpacked/Choicer Voicer Creator.exe` after packaging. Keep the entire `win-unpacked` folder together. Save and close any older app window before reopening through the launcher to use the latest version. The running version appears in the header and in **Settings & usage**, which also shows the executable path.
 
 Install [FFmpeg and FFprobe for Windows](https://ffmpeg.org/download.html#build-windows), then add them to PATH or set their executable paths in **Settings & usage** (for example, `C:\ffmpeg\bin\ffmpeg.exe` and `C:\ffmpeg\bin\ffprobe.exe`). The build needs `libtheora`, `libvorbis`, `libx264`, and `ffv1` encoders. The FFmpeg/FFprobe command-line tools are not bundled. For a source checkout, follow the development instructions below to run or package the application.
 
