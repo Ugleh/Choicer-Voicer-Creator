@@ -50,3 +50,7 @@ main>*{grid-column:1/-1;min-width:0}
 .sound-choice{border:1px solid #4a3d58;background:#241f2d;border-radius:6px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px}
 .sound-choice .checkbox{margin:0}.sound-choice strong{display:block;font-size:13px;color:#e1d5ec}.sound-choice small{display:block;margin-top:5px;font-size:10px;color:#ac9db9}
 .timeline-clip{touch-action:none;cursor:grab}.timeline-clip .clip-handle{touch-action:none}
+.effect-menu{position:fixed;z-index:130;width:190px;border:1px solid #51604b;background:#202723;box-shadow:0 8px 30px #0009;border-radius:6px;padding:6px}
+.effect-menu strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:7px 9px;font-size:11px;color:#91a38b}
+.effect-menu button{display:block;width:100%;text-align:left;padding:9px;border:0;border-radius:3px;background:none;color:#d2dfc9;font-size:12px}
+.effect-menu button:hover,.effect-menu button:focus{background:#354430;outline:none}.effect-menu .delete-effect{color:#efb4a8}

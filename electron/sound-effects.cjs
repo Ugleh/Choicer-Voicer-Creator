@@ -39,7 +39,18 @@ async function mixBacking(engine, scene, output, outputDuration = scene.end - sc
   // Keep effect filters out of Windows' command-line length limit.
   const filterFile=output+'.filters-'+randomUUID()+'.txt';
   await fs.writeFile(filterFile,filters.join(';'));
-  try { await engine.ff([...args, '-filter_complex_script', filterFile, '-map', effects.length ? '[out]' : '[base]', '-ar', '48000', '-ac', '2', '-c:a', 'pcm_s16le', output], { duration: outputDuration, label: 'Mixing backing and sound effects' }); }
+  try {
+    const common=['-map', effects.length ? '[out]' : '[base]', '-ar', '48000', '-ac', '2', '-c:a', 'pcm_s16le', output];
+    try {
+      await engine.ff([...args, '-filter_complex_script', filterFile, ...common], { duration: outputDuration, label: 'Mixing backing and sound effects' });
+    } catch (error) {
+      // Older FFmpeg builds do not expose -filter_complex_script. Keep the
+      // script-file path for modern builds, but fall back to the inline graph
+      // so exported packs remain compatible with the user's configured tools.
+      if (!/Unrecognized option ['"]?filter_complex_script|Option not found/i.test(error.message||'')) throw error;
+      await engine.ff([...args, '-filter_complex', filters.join(';'), ...common], { duration: outputDuration, label: 'Mixing backing and sound effects' });
+    }
+  }
   finally { await fs.rm(filterFile,{force:true}); }
   const info = await engine.probe(output);
   if (Math.abs(info.duration - count / 48000) > .001) throw new Error('Backing mix duration verification failed.');

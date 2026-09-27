@@ -79,3 +79,7 @@ Verified the packaged v0.1.20 app with isolated projects at 1500Ã—1000 and 1120Ã
 ## v0.1.21 sound choices and timeline dragging
 
 The packaged app passed timeline-drag, audio-editing, and precision-timing desktop checks. Checks cover fixed playhead positions when moving/resizing dialogue or effects, snapping from either side, bypassing snapping, independent Undo, four solo audition controls, selected-only multi-import, one-step import Undo/Redo, save/reopen, trimming, export, and per-request estimates. The default 35 tests plus seven audio/batch/snapping tests passed. Batch tests verify four independent requests and files, partial-failure preservation, cancellation between requests, and no automatic retries. All ElevenLabs responses were simulated; no paid calls were made.
+
+## v0.1.22 sound-effect clipboard and FFmpeg compatibility
+
+The focused audio tests pass, including a regression that simulates FFmpeg rejecting `-filter_complex_script` and verifies the inline filter fallback. Sound effects can be selected in the list or timeline, copied/cut/pasted at the current playhead, and deleted with Delete or Backspace. The context menu exposes the same actions. The Windows production build and packaged UI check are run by the tag-triggered GitHub workflow because this restricted workspace cannot start esbuild's parent-directory process.

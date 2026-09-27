@@ -45,6 +45,12 @@ test('effects mix at sample-accurate offsets with gain, fades, overlap and mute;
   assert.equal(trimEffects([first],3,1).length,0);assert.ok(effectError({...first,end:9},4));
   assert.ok(validateScene({name:'s',...scene,clips:[],effects:[{...first,missing:true}]},{duration:4}).errors.some(e=>e.includes('missing')));
 });
+test('sound-effect mixing falls back for FFmpeg builds without filter_complex_script',async()=>{
+  const {dir,engine,wav,pcm}=await fixture(),input=await wav('legacy-effect',[2000]),asset=await importEffect(engine,input,path.join(dir,'legacy-asset'));
+  const calls=[],run=engine.ff.bind(engine);engine.ff=async(args,options)=>{calls.push(args);if(args.includes('-filter_complex_script'))throw Error("Unrecognized option 'filter_complex_script'.\nError splitting the argument list: Option not found");return run(args,options);};
+  const output=path.join(dir,'legacy-mix.wav');await mixBacking(engine,{start:0,end:2,effects:[{...asset,start:0,end:1}]},output);
+  assert.equal(calls.length,2);assert.ok(calls[1].includes('-filter_complex'));assert.equal((await pcm(output)).length,2*rate*4);
+});
 test('sound generation sends only a prompt and explicit duration and records cost without an automatic retry',async()=>{
   const {dir,engine,wav}=await fixture(),audio=await wav('generated',[2000,2000]),jobs=[];let requests=0;
   const settings=()=>({subscriptionTier:'creator',pricingMode:'plan'});

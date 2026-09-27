@@ -10,7 +10,7 @@ export function resizeEffect(effect,patch) {
   return {...next,fadeIn:Math.min(next.fadeIn,length/2),fadeOut:Math.min(next.fadeOut,length/2)};
 }
 
-export function EffectsTrack({scene,start,span,current,selectedId,onSelect,onUpdate}) {
+export function EffectsTrack({scene,start,span,current,selectedId,onSelect,onUpdate,onMenu}) {
   const drag=useRef(null),duration=scene.end-scene.start;
   function begin(event,effect,edge) {
     event.stopPropagation();if(event.button!==0)return;event.preventDefault();
@@ -32,7 +32,7 @@ export function EffectsTrack({scene,start,span,current,selectedId,onSelect,onUpd
     {(scene.effects||[]).map((effect,index)=>{
       const left=(scene.start+effect.start-start)/span*100,right=(scene.start+effect.end-start)/span*100;
       if(right<0||left>100)return null;
-      return <div key={effect.id} role="button" tabIndex={0} aria-label={`Sound effect: ${effect.name}`} aria-pressed={selectedId===effect.id} data-effect-id={effect.id} className={`effect-clip ${selectedId===effect.id?'selected':''} ${effect.muted?'muted-effect':''}`} style={{left:`${Math.max(0,left)}%`,width:`${Math.max(.4,Math.min(100,right)-Math.max(0,left))}%`,top:6+(index%3)*27,zIndex:selectedId===effect.id?9:4}} title={`${effect.name} · ${formatTime(effect.start)}–${formatTime(effect.end)} · Drag to move`} onPointerDown={e=>begin(e,effect)} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();onSelect(effect.id);}}}>
+      return <div key={effect.id} role="button" tabIndex={0} aria-label={`Sound effect: ${effect.name}`} aria-pressed={selectedId===effect.id} data-effect-id={effect.id} className={`effect-clip ${selectedId===effect.id?'selected':''} ${effect.muted?'muted-effect':''}`} style={{left:`${Math.max(0,left)}%`,width:`${Math.max(.4,Math.min(100,right)-Math.max(0,left))}%`,top:6+(index%3)*27,zIndex:selectedId===effect.id?9:4}} title={`${effect.name} · ${formatTime(effect.start)}–${formatTime(effect.end)} · Drag to move`} onContextMenu={e=>{e.preventDefault();e.stopPropagation();onMenu?.(e,effect.id);}} onPointerDown={e=>begin(e,effect)} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();onSelect(effect.id);}}}>
         {selectedId===effect.id&&['start','end'].map(edge=><button key={edge} aria-label={`Resize sound effect ${edge}`} className={`clip-handle ${edge}`} onPointerDown={e=>begin(e,effect,edge)} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop}/>)}
         <span>{effect.muted?'Muted · ':''}{effect.name}</span>
       </div>;
@@ -64,15 +64,17 @@ export function EffectsPlayback({scene,videoRef,playing,enabled,onError}) {
   return <>{(scene?.effects||[]).filter(e=>e.url&&!e.missing).map(effect=><audio key={effect.id} data-sound-effect={effect.id} ref={node=>{if(node)nodes.current.set(effect.id,node);else nodes.current.delete(effect.id);}} src={effect.url} preload="auto" onError={()=>onError(`Could not load sound effect: ${effect.name}. Reimport or remove it.`)}/>)}</>;
 }
 
-export default function SoundEffects({scene,selectedId,onSelect,onUpdate,onImport,onGenerate,onRemove,onPlay,busy,TimeInput}) {
+export default function SoundEffects({scene,selectedId,onSelect,onUpdate,onImport,onGenerate,onRemove,onPlay,onCopy,onCut,onPaste,effectMenu,onOpenMenu,onCloseMenu,busy,TimeInput}) {
   const [collapsed,setCollapsed]=useState(false);
   useEffect(()=>setCollapsed(false),[scene.id,selectedId]);
+  useEffect(()=>{if(!effectMenu)return;const close=event=>{if(!event.target.closest('.effect-menu'))onCloseMenu?.();};window.addEventListener('pointerdown',close);return()=>window.removeEventListener('pointerdown',close);},[effectMenu,onCloseMenu]);
   const effects=scene.effects||[],effect=effects.find(e=>e.id===selectedId),duration=scene.end-scene.start,volumeDrag=useRef(false);
   const update=(patch,coalesce=false)=>onUpdate(effect.id,resizeEffect(effect,patch),coalesce);
+  const menuEffect=effects.find(e=>e.id===effectMenu?.id);
   return <section className={`sound-effects-panel ${!effects.length||collapsed?'compact-effects':''}`} aria-label="Sound Effects">
     <div className="section-toolbar"><div className="row"><Volume2 size={17}/><strong>Sound Effects</strong><span className="count">{effects.length}</span>{effects.length>0&&<button className="text-button" aria-expanded={!collapsed} onClick={()=>setCollapsed(value=>!value)}>{collapsed?'Expand sound effects':'Collapse sound effects'}</button>}</div><div className="row"><button className="button" disabled={busy||effects.length>=200} onClick={onImport}><Upload size={15}/> Import sound effect</button><button className="button" disabled={busy||effects.length>=200} onClick={onGenerate}><WandSparkles size={15}/> Generate with ElevenLabs</button></div></div>
     {effects.length>0&&!collapsed&&<><p className="effects-help">Drag clips on the Sound Effects track to move them; select one to trim its edges. Effects play over the scene and are mixed into the exported backing WAV.</p>
-    <div className="effects-content"><div className="effects-list">{effects.map(e=><button className={`effect-row ${e.id===selectedId?'active':''}`} key={e.id} aria-pressed={e.id===selectedId} onClick={()=>onSelect(e.id)}><span>{e.name}{e.missing&&<small>File missing</small>}</span><span>{formatTime(e.start)} · {(e.end-e.start).toFixed(2)}s{e.muted?' · muted':''}</span></button>)}{!effects.length&&<p className="muted">Add audio from your computer, or describe a sound for ElevenLabs to generate. Importing audio needs no API key.</p>}</div>
+    <div className="effects-content"><div className="effects-list">{effects.map(e=><button className={`effect-row ${e.id===selectedId?'active':''}`} key={e.id} aria-pressed={e.id===selectedId} onContextMenu={event=>{event.preventDefault();onOpenMenu?.(event,e.id);}} onClick={()=>onSelect(e.id)}><span>{e.name}{e.missing&&<small>File missing</small>}</span><span>{formatTime(e.start)} · {(e.end-e.start).toFixed(2)}s{e.muted?' · muted':''}</span></button>)}{!effects.length&&<p className="muted">Add audio from your computer, or describe a sound for ElevenLabs to generate. Importing audio needs no API key.</p>}</div>
     {effect&&<div className="effect-editor"><label className="field"><span>Effect name</span><input aria-label="Effect name" value={effect.name} onChange={e=>update({name:e.target.value})}/></label>
       {effect.missing&&<p className="amber">This audio file is missing. Import a replacement, or mute/remove this clip before exporting.</p>}
       <div className="two-cols"><label className="field"><span>Start · scene time</span><TimeInput label="Effect start time" value={effect.start} max={duration-(effect.end-effect.start)} onChange={start=>update({start,end:round(start+effect.end-effect.start)})}/></label><label className="field"><span>End · scene time</span><TimeInput label="Effect end time" value={effect.end} min={effect.start+.01} max={Math.min(duration,effect.start+effect.duration-effect.offset)} onChange={end=>update({end})}/></label></div>
@@ -82,5 +84,6 @@ export default function SoundEffects({scene,selectedId,onSelect,onUpdate,onImpor
       <label className="checkbox"><input type="checkbox" checked={!!effect.muted} onChange={e=>update({muted:e.target.checked})}/> Mute effect in preview and export</label>
       <div className="row"><button className="button" disabled={effect.missing||effect.muted} onClick={()=>onPlay(effect.start,effect.end)}><Play size={15}/> Play in scene</button><button className="button" onClick={()=>onRemove(effect.id)}><Trash2 size={15}/> Remove effect</button></div>
     </div>}</div></>}
+    {effectMenu&&menuEffect&&<div className="effect-menu" role="menu" style={{left:Math.min(effectMenu.x,window.innerWidth-200),top:Math.min(effectMenu.y,window.innerHeight-175)}} onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();onCloseMenu?.();}}}><strong>{menuEffect.name}</strong><button role="menuitem" onClick={()=>{onCopy(menuEffect.id);onCloseMenu?.();}}>Copy effect</button><button role="menuitem" onClick={()=>{onCut(menuEffect.id);onCloseMenu?.();}}>Cut effect</button><button role="menuitem" onClick={()=>{onPaste();onCloseMenu?.();}}>Paste effect</button><button role="menuitem" className="delete-effect" onClick={()=>{onRemove(menuEffect.id);onCloseMenu?.();}}>Delete effect</button></div>}
   </section>;
 }
