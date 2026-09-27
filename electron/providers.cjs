@@ -9,6 +9,21 @@ const {importEffect,patchBacking} = require('./sound-effects.cjs');
 class ElevenLabs {
   constructor({ engine, workspace, getKey, settings, record, progress, fetchImpl = fetch }) { Object.assign(this,{engine,workspace,getKey,settings,record,progress,fetchImpl}); }
   cancel() { this.controller?.abort(); }
+  async generateChoices(media,scene,options) {
+    const effects=[],batchId=id();
+    for(let variation=1;variation<=4;variation++) {
+      if(this.engine.cancelled)return {effects,error:'Generation cancelled. Completed choices are still available.',requested:4};
+      try {
+        const effect=await this.run('sound-effect',media,scene,{...options,variation,batchId});
+        effects.push({...effect,name:`${effect.name} · ${variation}`,variation});
+      } catch(error) {
+        // Preserve completed, potentially billed generations; never retry automatically.
+        if(!effects.length)throw error;
+        return {effects,error:error.message,requested:4};
+      }
+    }
+    return {effects,requested:4};
+  }
   async run(kind, media, scene, options = {}) {
     if (!['transcribe','separate','sound-effect'].includes(kind)) throw new Error('Unknown AI operation.');
     const range = kind === 'separate' && options.range ? validateSeparationRange(scene, options.range) : null;
@@ -20,6 +35,7 @@ class ElevenLabs {
     if(!Number.isFinite(duration)||duration<0.1||duration>600)throw new Error('AI jobs support scenes from 0.1 seconds to 10 minutes. Split longer scenes first.');
     const job={id:id(),time:new Date().toISOString(),provider:'ElevenLabs',kind,scene:scene.name,seconds:duration,status:'preparing',estimatedUsd:null,actualUsd:null,requestId:null};
     if(range)job.range={...range};
+    if(kind==='sound-effect'&&options.batchId){job.batchId=options.batchId;job.variation=options.variation;}
     Object.assign(job,estimateUsage(this.settings(),kind,duration));
     const dir=path.join(this.workspace,job.id); await fs.mkdir(dir,{recursive:true});
     let sent=false;
@@ -39,7 +55,7 @@ class ElevenLabs {
       this.controller=new AbortController();
       if(this.engine.cancelled)throw new Error('Operation cancelled before upload.');
       job.status='submitted';await this.record(job);sent=true;
-      this.progress({label:kind==='transcribe'?'ElevenLabs is transcribing this scene':kind==='sound-effect'?'ElevenLabs is generating a sound effect':'ElevenLabs is separating vocals and background',percent:null});
+      this.progress({label:kind==='transcribe'?'ElevenLabs is transcribing this scene':kind==='sound-effect'?`ElevenLabs is generating sound ${options.variation||1}${options.batchId?' of 4':''}`:'ElevenLabs is separating vocals and background',percent:null});
       const timeout=setTimeout(()=>this.controller?.abort(),20*60*1000);
       let response;
       try { response=await this.fetchImpl(`https://api.elevenlabs.io/v1/${endpoint}`,{method:'POST',redirect:'error',headers:{'xi-api-key':key,...(kind==='sound-effect'?{'Content-Type':'application/json'}:{})},body:kind==='sound-effect'?JSON.stringify({text:options.text.trim(),duration_seconds:duration,model_id:'eleven_text_to_sound_v2',prompt_influence:.3,loop:false}):form,signal:this.controller.signal}); }

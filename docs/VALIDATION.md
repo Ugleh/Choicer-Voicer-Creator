@@ -75,3 +75,7 @@ The packaged v0.1.19 editor passes the complete audio workflow: import, source-i
 ## v0.1.20 editor controls
 
 Verified the packaged v0.1.20 app with isolated projects at 1500×1000 and 1120×760: centered full-width preview, Show lines below resolution, sticky playback through bottom scrolling, Play line preserving scroll while pinned, compact empty effects, Save As and subsequent Save, cancellation and keyboard shortcuts, right-click scene exclusion/delete/Undo, and exclusion persistence on reopen. The existing audio-editor desktop checks also passed, including effect collapse/expand, import, volume, range repair, save/reopen, scene trim, and export with mocked cloud responses. Collection/core/sharing checks passed (12 tests), including a real combined media export omitting an excluded scene without changing remaining timestamps or samples.
+
+## v0.1.21 sound choices and timeline dragging
+
+The packaged app passed timeline-drag, audio-editing, and precision-timing desktop checks. Checks cover fixed playhead positions when moving/resizing dialogue or effects, snapping from either side, bypassing snapping, independent Undo, four solo audition controls, selected-only multi-import, one-step import Undo/Redo, save/reopen, trimming, export, and per-request estimates. The default 35 tests plus seven audio/batch/snapping tests passed. Batch tests verify four independent requests and files, partial-failure preservation, cancellation between requests, and no automatic retries. All ElevenLabs responses were simulated; no paid calls were made.

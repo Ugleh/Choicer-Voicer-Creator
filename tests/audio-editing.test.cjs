@@ -54,6 +54,19 @@ test('sound generation sends only a prompt and explicit duration and records cos
   provider.fetchImpl=async()=>{requests++;throw Error('Connection lost');};await assert.rejects(provider.run('sound-effect',{}, {name:'s',start:0,end:4},{text:'Rain',duration:2}),/Connection lost/);assert.equal(requests,2);assert.equal(jobs.at(-1).status,'unconfirmed');
   assert.equal(estimateUsage({subscriptionTier:'creator',pricingMode:'custom',soundEffectRate:.3},'sound-effect',2).estimatedUsd,.01);
 });
+test('four sound choices have independent requests, costs and files; failure/cancellation preserve completed choices',async()=>{
+  const {dir,engine,wav}=await fixture(),audio=await wav('choices',[1000]),jobs=[];let calls=0;
+  const provider=new ElevenLabs({engine,workspace:dir,getKey:()=> 'fake-key',settings:()=>({subscriptionTier:'creator',pricingMode:'plan'}),record:async j=>jobs.push({...j}),progress:()=>{},fetchImpl:async()=>{calls++;return new Response(await fs.readFile(audio),{headers:{'request-id':'choice-'+calls}});}});
+  const scene={name:'Choices',start:0,end:4},options={text:'A click',duration:1};
+  const result=await provider.generateChoices({},scene,options);assert.equal(calls,4);assert.equal(result.effects.length,4);assert.equal(new Set(result.effects.map(e=>e.path)).size,4);assert.deepEqual(result.effects.map(e=>e.variation),[1,2,3,4]);
+  const completed=jobs.filter(j=>j.status==='succeeded');assert.equal(completed.length,4);assert.equal(new Set(completed.map(j=>j.batchId)).size,1);assert.equal(completed.reduce((sum,j)=>sum+j.estimatedUsd,0),.008);
+  let partialCalls=0;provider.fetchImpl=async()=>{partialCalls++;if(partialCalls===3)throw Error('Connection lost');return new Response(await fs.readFile(audio));};
+  const partial=await provider.generateChoices({},scene,options);assert.equal(partialCalls,3);assert.equal(partial.effects.length,2);assert.match(partial.error,/Connection lost/);
+  let cancelCalls=0;provider.fetchImpl=async()=>{cancelCalls++;return new Response(await fs.readFile(audio));};
+  const record=provider.record;provider.record=async job=>{await record(job);if(job.status==='succeeded')engine.cancelled=true;};
+  const cancelled=await provider.generateChoices({},scene,options);assert.equal(cancelCalls,1);assert.equal(cancelled.effects.length,1);assert.match(cancelled.error,/cancelled/);
+});
+
 test('single and combined pack exports include effects at the correct scene offsets without adding them to dialogue',async()=>{
   const {dir,engine,wav,pcm}=await fixture(),movie=path.join(dir,'source.mp4');
   await engine.ff(['-f','lavfi','-i','color=c=blue:size=160x90:rate=24:duration=6','-f','lavfi','-i','anullsrc=r=48000:cl=stereo','-t','6','-c:v','libx264','-c:a','aac',movie]);

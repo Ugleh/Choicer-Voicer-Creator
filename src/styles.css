@@ -46,3 +46,7 @@ main>*{grid-column:1/-1;min-width:0}
 .scene-menu button:hover,.scene-menu button:focus{background:#354430;outline:none}
 .scene-menu .delete-scene{color:#efb4a8}
 @media(max-width:1250px){main{grid-template-columns:minmax(380px,1fr) 257px;column-gap:13px}.header-actions{gap:6px}.local-indicator{display:none}}
+.sound-choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+.sound-choice{border:1px solid #4a3d58;background:#241f2d;border-radius:6px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.sound-choice .checkbox{margin:0}.sound-choice strong{display:block;font-size:13px;color:#e1d5ec}.sound-choice small{display:block;margin-top:5px;font-size:10px;color:#ac9db9}
+.timeline-clip{touch-action:none;cursor:grab}.timeline-clip .clip-handle{touch-action:none}

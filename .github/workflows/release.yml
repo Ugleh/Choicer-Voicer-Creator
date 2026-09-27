@@ -47,6 +47,8 @@ jobs:
         run: npm run test:integration
       - name: Verify range repairs and sound-effect mixing
         run: npm run test:audio-editing
+      - name: Verify timeline movement and snapping
+        run: npm run test:timeline-drag
       - name: Verify collection selection and sharing
         run: |
           npm run test:collection

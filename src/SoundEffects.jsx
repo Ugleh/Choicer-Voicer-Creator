@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Upload, WandSparkles, Volume2, Play, Trash2} from 'lucide-react';
 import {formatTime} from './time.mjs';
+import {moveTimelineClip,resizeTimelineEdge} from './timeline-drag.mjs';
 
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const round=n=>Math.round(n*1000)/1000;
@@ -9,20 +10,21 @@ export function resizeEffect(effect,patch) {
   return {...next,fadeIn:Math.min(next.fadeIn,length/2),fadeOut:Math.min(next.fadeOut,length/2)};
 }
 
-export function EffectsTrack({scene,start,span,selectedId,onSelect,onUpdate}) {
+export function EffectsTrack({scene,start,span,current,selectedId,onSelect,onUpdate}) {
   const drag=useRef(null),duration=scene.end-scene.start;
   function begin(event,effect,edge) {
     event.stopPropagation();if(event.button!==0)return;event.preventDefault();
     const width=event.currentTarget.closest('.timeline').getBoundingClientRect().width;
-    onSelect(effect.id);drag.current={effect,edge,x:event.clientX,width};event.currentTarget.setPointerCapture(event.pointerId);
+    onSelect(effect.id,true);drag.current={effect,edge,x:event.clientX,width,playhead:current-scene.start};event.currentTarget.setPointerCapture(event.pointerId);
   }
   function move(event) {
     if(!drag.current||!event.currentTarget.hasPointerCapture(event.pointerId))return;
-    event.stopPropagation();const {effect,edge,x,width}=drag.current,delta=(event.clientX-x)/width*span;
+    event.stopPropagation();const {effect,edge,x,width,playhead}=drag.current,delta=(event.clientX-x)/width*span,tolerance=8/width*span;
+    if(Math.abs(event.clientX-x)<3&&!drag.current.moved)return;drag.current.moved=true;
     let patch;
-    if(edge==='start') {const a=round(clamp(effect.start+delta,Math.max(0,effect.start-effect.offset),effect.end-.01));patch={start:a,offset:round(effect.offset+a-effect.start)};}
-    else if(edge==='end')patch={end:round(clamp(effect.end+delta,effect.start+.01,Math.min(duration,effect.start+effect.duration-effect.offset)))};
-    else {const a=round(clamp(effect.start+delta,0,duration-(effect.end-effect.start)));patch={start:a,end:round(a+effect.end-effect.start)};}
+    if(edge==='start') {const a=resizeTimelineEdge(effect.start+delta,Math.max(0,effect.start-effect.offset),effect.end-.01,playhead,tolerance,event.shiftKey);patch={start:a,offset:round(effect.offset+a-effect.start)};}
+    else if(edge==='end')patch={end:resizeTimelineEdge(effect.end+delta,effect.start+.01,Math.min(duration,effect.start+effect.duration-effect.offset),playhead,tolerance,event.shiftKey)};
+    else patch=moveTimelineClip(effect,delta,duration,playhead,tolerance,event.shiftKey);
     onUpdate(effect.id,resizeEffect(effect,patch),true);
   }
   function stop(event){event.stopPropagation();if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);drag.current=null;}
