@@ -57,6 +57,7 @@ function validateProject(project) {
   for (const scene of project.scenes) {
     if (typeof scene.id !== 'string' || seen.has(scene.id) || typeof scene.name !== 'string' || !finite(scene.start) || !finite(scene.end) || !Array.isArray(scene.clips) || scene.clips.length > 10000) throw new Error('Invalid scene in project.');
     seen.add(scene.id);
+    if(scene.excludeFromCollection!==undefined&&typeof scene.excludeFromCollection!=='boolean')throw new Error('Invalid collection export setting in scene.');
     if(scene.effects!==undefined&&(!Array.isArray(scene.effects)||scene.effects.length>200))throw new Error('A scene supports up to 200 sound effects.');
     const effectIds=new Set();for(const effect of scene.effects||[]){const error=effectError(effect,scene.end-scene.start);if(error||effectIds.has(effect.id))throw new Error(error||'Duplicate sound effect identity.');effectIds.add(effect.id);}
     if(scene.linePadding!==undefined&&(!finite(scene.linePadding)||scene.linePadding<0||scene.linePadding>5))throw new Error('Invalid dialogue padding in project.');

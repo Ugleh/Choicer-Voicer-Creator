@@ -20,7 +20,8 @@ test('combined collection retains scene order, aligns video/backing and offsets 
  const a={linePadding:0,id:'a',name:'Blue first',start:4,end:5.019,normalize:false,clips:[{id:'line-a',start:.1,end:.4,caption:'Together!',character:'A'},{id:'line-b',start:.1,end:.4,caption:'Together!',character:'B'}]};
  const b={linePadding:0,id:'b',name:'Red second',start:.5,end:2.507,normalize:true,clips:[{id:'line-c',start:.2,end:1.9,caption:'Later in the pack',character:'C'}]};
  for(const [i,scene] of [a,b].entries()){const file=path.join(dir,`backing-${i}.wav`),duration=scene.end-scene.start;await engine.ff(['-f','lavfi','-i',`aevalsrc=${i?-.1:.2}:s=48000:d=${duration}`,'-ac','2','-c:a','pcm_s16le',file]);scene.backing={path:file,duration,sourceStart:scene.start,sourceEnd:scene.end,audioIndex:1,reviewed:true};}
- const project={version:1,name:'Source collection name',packTitle:'Custom Combined Title',author:'Author',description:'Collection description',media,scenes:[a,b]},before=structuredClone(project),plan=collectionPlan(project);
+ const excluded={...a,id:'excluded',name:'Skip this scene',excludeFromCollection:true,clips:[]};
+ const project={version:1,name:'Source collection name',packTitle:'Custom Combined Title',author:'Author',description:'Collection description',media,scenes:[a,excluded,b]},before=structuredClone(project),plan=collectionPlan(project);
  assert.deepEqual(plan.entries.map(e=>e.scene.id),['a','b']);assert.equal(plan.entries[1].offset,25/24);assert.equal(plan.lines[2].timedClip.start,1.242);
  const root=path.join(dir,'packs');await fs.mkdir(root);const result=await engine.exportCollection(project,root);
  assert.deepEqual(await fs.readdir(root),['Custom Combined Title']);assert.equal(result.sceneCount,2);assert.equal(result.lineCount,3);
@@ -39,4 +40,15 @@ test('combined collection retains scene order, aligns video/backing and offsets 
  const failedRoot=path.join(dir,'failed');await fs.mkdir(failedRoot);const ff=engine.ff.bind(engine);engine.ff=async(args,opts)=>{if(opts?.label==='Encoding combined collection video'){engine.cancel();throw Error('Operation cancelled.');}return ff(args,opts);};
  await assert.rejects(engine.exportCollection(project,failedRoot),/cancelled/);assert.deepEqual(await fs.readdir(failedRoot),[]);assert.deepEqual(project,before);
  console.log('Collection export verified: order, exact frame transition, backing samples/padding, rebased duplicate timestamps, custom title, individual export, overwrite refusal and cancellation cleanup.');
+});
+
+test('collection exclusions reject an empty selection and match shared statistics',()=>{
+ const {collectionStats}=require('../shared/sharing.mjs');
+ const scene={id:'a',name:'Included',start:0,end:2,clips:[{id:'line',start:0,end:1,caption:'Two words',character:'A'}]};
+ const project={version:1,name:'Exclusions',media:{path:'source.mkv',duration:5,audioIndex:1,fps:24},scenes:[scene,{...scene,id:'b',name:'Excluded',excludeFromCollection:true}]};
+ assert.deepEqual(collectionPlan(project).entries.map(e=>e.scene.id),['a']);
+ const stats=collectionStats(project);assert.equal(stats.scenes.length,1);assert.equal(stats.words,2);assert.equal(stats.duration,2);
+ assert.equal(validateProject(project),project);
+ assert.throws(()=>collectionPlan({...project,scenes:project.scenes.map(s=>({...s,excludeFromCollection:true}))}),/Enable at least one scene/);
+ assert.throws(()=>validateProject({...project,scenes:[{...scene,excludeFromCollection:'false'}]}),/collection export setting/);
 });

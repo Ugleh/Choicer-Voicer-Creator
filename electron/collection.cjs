@@ -3,10 +3,12 @@ const {lineRange}=require('../shared/line-range.mjs');
 
 function collectionPlan(project) {
   if (!project.media || !project.scenes?.length) throw new Error('Add at least one scene to export the collection.');
+  const scenes=project.scenes.filter(scene=>scene.excludeFromCollection!==true);
+  if (!scenes.length) throw new Error('Enable at least one scene for collection export.');
   const fps=Number.isFinite(project.media.fps)&&project.media.fps>0?project.media.fps:24;
   let frames=0,samples=0;
   const entries=[],lines=[],warnings=[];
-  for (const scene of project.scenes) {
+  for (const scene of scenes) {
     const validation=validateScene(scene,project.media);
     if (validation.errors.length) throw new Error(`${scene.name}: ${validation.errors.join(' ')}`);
     warnings.push(...validation.warnings.map(w=>`${scene.name}: ${w}`));

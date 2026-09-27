@@ -7,7 +7,7 @@ function unionTime(intervals){let end=-1,total=0;for(const [a,b] of [...interval
 
 export function collectionStats(project){
   const characters=new Map();let words=0,lines=0,dialogueMs=0,durationMs=0,invalidTimings=0;
-  const scenes=project.scenes.map((scene,index)=>{
+  const scenes=project.scenes.filter(scene=>scene.excludeFromCollection!==true).map((scene,index)=>{
     const duration=Math.max(0,Math.round((scene.end-scene.start)*1000)),intervals=[],byCharacter=new Map();let sceneWords=0;
     for(const clip of scene.clips){
       const name=oneLine(clip.character)||'Unassigned',count=wordCount(clip.caption);sceneWords+=count;

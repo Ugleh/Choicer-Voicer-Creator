@@ -1,6 +1,6 @@
 {
   "name": "choicer-voicer-creator",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "private": true,
   "description": "A local desktop workshop for Choicer Voicer dub packs",
   "author": "Choicer Voicer Creator contributors",
@@ -38,6 +38,7 @@
     "test:pricing-ui": "node scripts/pricing-smoke.cjs",
     "test:audio-editing": "node --test tests/audio-editing.test.cjs",
     "test:audio-editing-ui": "node scripts/audio-editing-smoke.cjs",
+    "test:editor-qol": "node scripts/editor-qol-smoke.cjs",
     "package": "npm run build && electron-builder --win dir --x64 --publish never",
     "package:release": "node scripts/release-assets.cjs check && npm run build && electron-builder --win --x64 --publish never && node scripts/release-assets.cjs assets",
     "test:package": "node scripts/verify-package.cjs",

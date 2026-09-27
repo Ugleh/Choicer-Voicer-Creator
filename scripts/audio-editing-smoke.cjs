@@ -31,6 +31,7 @@ const {MediaEngine}=require('../electron/media.cjs');
     await button('Settings and usage').click();await page.getByLabel('API key',{exact:true}).fill('test-only-not-a-real-key');await button('Save settings').click();
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},fixture.backing);
     await button('Import sound effect').click();await page.getByLabel('Effect name',{exact:true}).waitFor();
+    await button('Collapse sound effects').click();assert.equal(await page.getByLabel('Effect name',{exact:true}).count(),0);assert.ok((await page.locator('.sound-effects-panel').boundingBox()).height<100);await button('Expand sound effects').click();await page.getByLabel('Effect name',{exact:true}).waitFor();
     const time=async(label,value)=>{const field=page.getByRole('textbox',{name:label,exact:true});await field.fill(value);await field.press('Enter');};
     await page.getByLabel('Effect name',{exact:true}).fill('Imported impact');await time('Effect end time','1');await time('Effect start time','1');
     await time('Effect source in time','0.25');
