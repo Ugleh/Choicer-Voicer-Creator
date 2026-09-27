@@ -1,0 +1,66 @@
+{
+  "name": "choicer-voicer-creator",
+  "version": "0.1.15",
+  "private": true,
+  "description": "A local desktop workshop for Choicer Voicer dub packs",
+  "author": "Choicer Voicer Creator contributors",
+  "main": "electron/main.cjs",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "dev": "node scripts/dev.cjs",
+    "build": "vite build",
+    "start": "electron .",
+    "test": "node --test tests/core.test.cjs tests/providers.test.cjs tests/tool-paths.test.cjs tests/progress.test.cjs tests/selection.test.mjs tests/dialogue.test.mjs tests/preview.test.mjs tests/timing.test.mjs",
+    "test:integration": "node --test tests/integration.cjs",
+    "test:desktop": "node scripts/smoke.cjs",
+    "test:drop": "node scripts/drop-smoke.cjs",
+    "test:selection": "node scripts/selection-smoke.cjs",
+    "test:dialogue": "node scripts/dialogue-smoke.cjs",
+    "test:duplicate": "node scripts/duplicate-smoke.cjs",
+    "test:preview": "node scripts/preview-smoke.cjs",
+    "test:timing": "node scripts/timing-smoke.cjs",
+    "test:trim-audio": "node --test tests/scene-trim.test.cjs",
+    "test:dialogue-audio": "node --test tests/dialogue-audio.test.cjs",
+    "test:collection": "node --test tests/collection.test.cjs",
+    "test:collection-ui": "node scripts/collection-smoke.cjs",
+    "test:timeline": "node --test tests/timeline.test.mjs tests/thumbnails.test.cjs",
+    "test:timeline-ui": "node scripts/timeline-smoke.cjs",
+    "test:line-padding": "node --test tests/line-padding.test.cjs",
+    "test:dialogue-qol": "node scripts/dialogue-qol-smoke.cjs",
+    "test:sharing": "node --test tests/sharing.test.mjs",
+    "test:sharing-ui": "node scripts/sharing-smoke.cjs",
+    "test:pricing": "node --test tests/pricing.test.mjs tests/providers.test.cjs",
+    "test:pricing-ui": "node scripts/pricing-smoke.cjs",
+    "package": "npm run build && electron-builder --win dir"
+  },
+  "dependencies": {
+    "adm-zip": "^0.6.1",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.4.1",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.0.12",
+    "playwright": "^1.55.0",
+    "vite": "^6.3.6"
+  },
+  "build": {
+    "appId": "local.choicervoicer.creator",
+    "productName": "Choicer Voicer Creator",
+    "directories": {
+      "output": "release/v0.1.15"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "shared/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  }
+}

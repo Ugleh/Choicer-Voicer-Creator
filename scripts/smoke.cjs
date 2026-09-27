@@ -1,0 +1,48 @@
+const {_electron:electron}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const path=require('node:path');
+(async()=>{
+  const fixture=JSON.parse(await fs.readFile('.test-data/fixture-path.json','utf8'));
+  const testData=path.resolve('.test-data','desktop-'+Date.now());await fs.mkdir(testData,{recursive:true});
+  const app=await electron.launch({args:[path.resolve('.')],env:{...process.env,CV_TEST_DATA:testData}});
+  const errors=[];const page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(20000);
+  try{
+    await page.getByText('Make a scene worth repeating.').waitFor();await page.getByText('FFmpeg ready',{exact:false}).waitFor();
+    await page.screenshot({path:'.test-data/welcome.png'});
+    await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},fixture.mkv);
+    await page.getByRole('button',{name:'Choose a video'}).click();
+    await page.getByRole('button',{name:'Create scene',exact:true}).waitFor({state:'visible'});
+    await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2);
+    await page.getByRole('spinbutton',{name:'Selection in seconds'}).fill('2');await page.getByRole('spinbutton',{name:'Selection out seconds'}).fill('6');
+    await page.getByRole('button',{name:'Create scene',exact:true}).click();
+    await page.getByLabel('Scene name',{exact:true}).fill('The test scene');
+    await page.getByRole('button',{name:'Add dialogue line'}).click();
+    await page.getByRole('textbox',{name:'New line start time'}).fill('0.42');await page.getByRole('textbox',{name:'New line end time'}).fill('1.8');
+    await page.getByRole('button',{name:'Create dialogue line'}).click();
+    await page.getByLabel('Caption',{exact:true}).fill('That is a lot of nuts!');await page.getByLabel('Character',{exact:true}).fill('Nut Vendor');
+    await page.getByRole('button',{name:'Play line',exact:true}).click();await page.waitForFunction(()=>document.querySelector('video').currentTime>2.5);
+    await page.getByRole('button',{name:'Pause',exact:true}).click();
+    await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},fixture.backing);
+    await page.getByRole('button',{name:'or import a prepared audio file'}).click();await page.getByText('Review needed',{exact:true}).waitFor();
+    await page.getByRole('checkbox',{name:'I listened and checked the backing track'}).check();
+    await page.getByRole('button',{name:'Backing track',exact:true}).click();
+    await page.getByRole('button',{name:'Play line',exact:true}).click();await page.waitForFunction(()=>document.querySelector('audio')?.currentTime>.5);await page.getByRole('button',{name:'Pause',exact:true}).click();
+    await page.screenshot({path:'.test-data/editor.png',fullPage:true});
+    await app.evaluate(({dialog},file)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:file});},path.join(testData,'collection.cvcreator'));
+    await page.getByRole('button',{name:'Save project',exact:true}).click();await page.getByRole('button',{name:'Saved',exact:true}).waitFor();
+    const saved=JSON.parse(await fs.readFile(path.join(testData,'collection.cvcreator'),'utf8'));assert.equal(saved.scenes[0].clips[0].start,.42);assert.equal(saved.scenes[0].backing.reviewed,true);
+    await page.getByRole('button',{name:'Remove scene',exact:true}).click();
+    await page.getByRole('button',{name:'Undo',exact:true}).click();
+    await page.getByRole('button',{name:/01 The test scene/}).click();
+    await page.getByRole('button',{name:'Save project',exact:true}).click();await page.getByRole('button',{name:'Saved',exact:true}).waitFor();
+    await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},path.join(testData,'collection.cvcreator'));
+    await page.getByRole('button',{name:'Open',exact:true}).click();
+    await page.getByRole('checkbox',{name:'I listened and checked the backing track'}).waitFor();
+    assert.equal(await page.getByRole('checkbox',{name:'I listened and checked the backing track'}).isChecked(),true);
+    const exported=path.join(testData,'export');await fs.mkdir(exported);
+    await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},exported);
+    await page.getByRole('button',{name:'Export pack',exact:true}).click();await page.getByRole('dialog',{name:'Your packs are ready'}).waitFor();
+    const names=await fs.readdir(exported);assert.equal(names.length,1);assert.ok((await fs.readdir(path.join(exported,names[0]))).includes('dub_video.ogv'));
+    await page.getByRole('button',{name:'Done',exact:true}).click();
+    await page.getByRole('button',{name:'Settings and usage'}).click();await page.getByRole('dialog',{name:'Settings & usage'}).waitFor();await page.screenshot({path:'.test-data/settings.png'});
+    assert.deepEqual(errors,[]);console.log('Desktop smoke passed: native MKV import, playback, scene, line, backing, save/reopen, remove/undo, export, settings.');
+  } finally {await app.evaluate(({app})=>app.exit(0));await app.close().catch(()=>{});}
+})().catch(e=>{console.error(e);process.exitCode=1;});
