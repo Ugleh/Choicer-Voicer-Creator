@@ -2,6 +2,8 @@
 
 A Windows desktop editor for turning videos into collections of Choicer Voicer Dub Packs. An independent fan tool; not affiliated with YeahMaybe. No game files are included.
 
+This project was built with **ElevenLabs** in mind for separating dialogue from background audio to create backing tracks, and transcribing dialogue into timed lines with speaker labels. **ElevenLabs is optional:** you can create and time dialogue lines manually, import a backing track made with another tool or use a silent background, and export packs without an ElevenLabs account or API key.
+
 ![Editing a scene from the Kung Pow collection](docs/screenshots/scene-editor.png)
 
 - Import common video formats and edit scenes with a preview, waveform, and timeline pictures.
